@@ -54,9 +54,9 @@ List Apps
 
 Scale/Stop Apps. Automatically distributing them accross the cluster
 
-    appbox deploy <app_name> 10
-    appbox stop <app_name>
-    appbox deploy <app_name> 5
+    sporedock deploy <app_name> 10
+    sporedock stop <app_name>
+    sporedock deploy <app_name> 5
 
 
 Apps/Webapps are automatically moved around as needed to maximize their distribution. If a node binds to a webapp it will be added to Vulcan's load balancer dynamically and traffic will be routed to the correct place as the node moves around. Should a node die, all procs will be redistributed.
