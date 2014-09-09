@@ -1,13 +1,14 @@
 package etcd
 
-import(
+import (
 	"github.com/coreos/etcd/config"
 	"github.com/coreos/etcd/etcd"
+	"github.com/pnegahdar/sporedock/settings"
 )
 
-
-func Run(discovery_url string){
+func Run(discovery_url string) {
 	config := config.New()
+	config.Name = settings.INSTANCE_UUID
 	config.Discovery = discovery_url
 	etcd := etcd.New(config)
 	etcd.Run()

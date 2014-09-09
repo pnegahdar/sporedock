@@ -1,9 +1,8 @@
 package main
 
 import (
+	"github.com/pnegahdar/sporedock/cli"
 	"os"
-
-	"github.com/pnegahdar/SporeDock/cli"
 )
 
 func main() {

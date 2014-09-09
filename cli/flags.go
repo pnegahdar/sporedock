@@ -5,6 +5,6 @@ import (
 )
 
 var DiscoveryFlag = cli.StringFlag{
-	Name: "discovery",
+	Name:  "discovery",
 	Usage: "The Etcd discovery URL (required)",
 }
