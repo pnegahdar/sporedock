@@ -1,6 +1,8 @@
 SporeDock
 =========
 
+**Status**: Not Runable (Design Phase). WIP.
+
 SporeDock is an opinionated Docker orchestration tool that makes it easy to scale and distribute Docker apps on a multi-node/host cluster. There are lots of tools around Docker Orchestration right now (see: Deis, Flynn, Shipyard, etcd, Coreos, Fleet, Serf, Bob, vlucand, hipache, Dokku, Mesos, Mesosphere, etc) but figuring out which to use and making them work together is difficult. SporeDock makes those decisions for you.
 
 

@@ -12,5 +12,5 @@ func init() {
 	CliApp.Usage = settings.AppUsage
 	CliApp.Version = settings.AppVersion
 	CliApp.Author = settings.AppAuthor
-	CliApp.Commands = []cli.Command{StartCommand, ConnectCommand}
+	CliApp.Commands = []cli.Command{StartCommand, InitCommand}
 }

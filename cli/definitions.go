@@ -11,11 +11,10 @@ var StartCommand = cli.Command{
 	Action:    StartMethod,
 }
 
-
-var ConnectCommand = cli.Command{
-	Name: "connect",
-	ShortName: "c",
-	Usage: "Set the config discovery url",
-	Action: ConnectMethod,
+var InitCommand = cli.Command{
+	Name:      "init",
+	ShortName: "i",
+	Usage:     "Set the config discovery url",
+	Action:    InitMethod,
 	Flags:     []cli.Flag{DiscoveryFlag},
 }

@@ -11,7 +11,7 @@ import (
 var EtcdClient *etcd.Client
 
 func getDiscoveryPeers() []string {
-	resp, err := http.Get("https://discovery.etcd.io/8d10877b6d6ff71796c5f5ddb83ce515")
+	resp, err := http.Get()
 	utils.HandleError(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)

@@ -1,9 +1,9 @@
-package worker
+package app
 
 import (
 	"github.com/pnegahdar/sporedock/etcd"
 )
 
-func Run(discovery_url string) {
+func StartServer(discovery_url string) {
 	etcd.Run(discovery_url)
 }

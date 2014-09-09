@@ -2,26 +2,36 @@ package settings
 
 import (
 	"code.google.com/p/go-uuid/uuid"
-	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 )
 
-var INSTANCE_NAME = get_instance_name()
-
-
-func get_instance_name() string {
+func GetInstanceName() string {
 	filePath := GetInstanceIdConfPath()
-	fileData, err := ioutil.ReadFile(filePath)
-	utils.HandleError(err)
-	if fileData == nil{
+	data := getFileContentsString(filePath)
+	if data == "" {
 		uuidBase := uuid.NewRandom()
 		uuidString := uuid.NewSHA1(uuidBase, nil).String()
-		ioutil.WriteFile(filePath, byte(uuidString), 0644)
+		writeFileContentsString(filePath, uuidString)
+		data = uuidString
 	}
-	return string(fileData)
+	return data
 }
-func GetDiscoveryString() string{
- return ""
+func GetDiscoveryString() string {
+	filePath := GetDiscoveryConfPath()
+	return getFileContentsString(filePath)
 }
-func SetDiscoveryString(disocvery string){
+func SetDiscoveryString(discovery string) {
+	filePath := GetDiscoveryConfPath()
+	writeFileContentsString(filePath, discovery)
+}
+
+func getFileContentsString(path string) string {
+	fileData, err := ioutil.ReadFile(path)
+	if err {
+		return ""
+	}
+	return string(fileData[:])
+}
+func writeFileContentsString(path string, content string) {
+	ioutil.WriteFile(path, []byte(content), 0644)
 }

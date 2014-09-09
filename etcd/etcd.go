@@ -8,7 +8,7 @@ import (
 
 func Run(discovery_url string) {
 	config := config.New()
-	config.Name = settings.INSTANCE_UUID
+	config.Name = settings.GetInstanceName()
 	config.Discovery = discovery_url
 	etcd := etcd.New(config)
 	etcd.Run()
