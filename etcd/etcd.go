@@ -6,10 +6,11 @@ import (
 	"github.com/pnegahdar/sporedock/settings"
 )
 
-func Run(discovery_url string) {
+func Run() {
 	config := config.New()
 	config.Name = settings.GetInstanceName()
-	config.Discovery = discovery_url
+	config.DataDir = settings.GetEtcdDataDir()
+	config.Discovery = settings.GetDiscoveryString()
 	etcd := etcd.New(config)
 	etcd.Run()
 }

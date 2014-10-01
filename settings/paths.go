@@ -18,3 +18,7 @@ func GetInstanceIdConfPath() string {
 func GetDiscoveryConfPath() string {
 	return GetProjectPath("DISCOVERY")
 }
+
+func GetEtcdDataDir() string {
+	return GetProjectPath("etcd/")
+}

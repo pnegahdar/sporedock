@@ -2,7 +2,9 @@ package settings
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
+	"errors"
 )
 
 func GetInstanceName() string {
@@ -18,7 +20,11 @@ func GetInstanceName() string {
 }
 func GetDiscoveryString() string {
 	filePath := GetDiscoveryConfPath()
-	return getFileContentsString(filePath)
+	content := getFileContentsString(filePath)
+	if content ==""{
+		utils.HandleError(errors.New("Must set discovery URI first with 'init' command"))
+	}
+	return content
 }
 func SetDiscoveryString(discovery string) {
 	filePath := GetDiscoveryConfPath()
@@ -27,7 +33,7 @@ func SetDiscoveryString(discovery string) {
 
 func getFileContentsString(path string) string {
 	fileData, err := ioutil.ReadFile(path)
-	if err {
+	if err != nil {
 		return ""
 	}
 	return string(fileData[:])

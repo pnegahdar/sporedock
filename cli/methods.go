@@ -8,8 +8,7 @@ import (
 )
 
 func StartMethod(c *cli.Context) {
-	discovery := c.String(DiscoveryFlag.Name)
-	app.StartServer(discovery)
+	app.StartServer()
 
 }
 

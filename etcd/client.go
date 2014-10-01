@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/coreos/go-etcd/etcd"
 	"github.com/pnegahdar/sporedock/utils"
+	"github.com/pnegahdar/sporedock/settings"
 	"io/ioutil"
 	"net/http"
 )
@@ -11,7 +12,7 @@ import (
 var EtcdClient *etcd.Client
 
 func getDiscoveryPeers() []string {
-	resp, err := http.Get()
+	resp, err := http.Get(settings.GetDiscoveryString())
 	utils.HandleError(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
