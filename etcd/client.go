@@ -3,8 +3,8 @@ package etcd
 import (
 	"encoding/json"
 	"github.com/coreos/go-etcd/etcd"
-	"github.com/pnegahdar/sporedock/utils"
 	"github.com/pnegahdar/sporedock/settings"
+	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
 )

@@ -1,0 +1,42 @@
+{
+    "Name": "My Web Cluster",
+    "Envs": [
+        {
+            "EnvID": "Dev",
+            "Env": {
+                "DB_URL": "dev.db.com",
+                "TYPE": "dev"
+            }
+        },
+        {
+            "EnvID": "Prod",
+            "Env": {
+                "DB_URL": "prod.db.com",
+                "TYPE": "prod"
+            }
+        }
+    ],
+    "WebAppsE": [
+        {
+            "AppName": "Demo Flask App",
+            "Image": "arturaugusto/flask-sample",
+            "InternalPort": 5000,
+            "EnvIDs": ["Dev"],
+            "RunMax": true,
+            "RunSingle": false,
+            "WebEndpoints": ["test.flask.com"]
+        }
+    ],
+    "WebApps": [
+        {
+            "AppName": "Demo Flask App",
+            "Image": "arturaugusto/flask-sample",
+            "InternalPort": 5000,
+            "EnvIDs": ["Dev"],
+            "RunMax": true,
+            "RunSingle": false,
+            "WebEndpoints": ["test.flask.com"]
+        }
+    ]
+
+}
