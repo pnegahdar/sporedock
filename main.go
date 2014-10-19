@@ -1,16 +1,14 @@
 package main
 
 import (
-	"fmt"
+	logging "github.com/op/go-logging"
 	"github.com/pnegahdar/sporedock/cli"
-	"github.com/pnegahdar/sporedock/manifest"
+	"github.com/pnegahdar/sporedock/config"
 	"os"
 )
 
-func app() {
-	cli.CliApp.Run(os.Args)
-}
-
 func main() {
-	fmt.Printf("%v\n" , manifest.ImportClusterConfigFromFile("sample_cluster.json"))
+	logging.SetLevel(logging.DEBUG, "main")
+	config.ImportClusterConfigFromFile("sample_cluster.json")
+	cli.CliApp.Run(os.Args)
 }
