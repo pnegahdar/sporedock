@@ -10,18 +10,18 @@ type Docker struct {
 }
 
 type WebApp struct {
+	EnvIDs         []string `etcd:{ .ID }/EnvsIDs`
 	ID             string   `etcd:{ .ID }`
 	Image          string   `etcd:{ .ID }/Image`
-	StartupCommand string   `etcd:{ .ID }/StartupCommand`
 	InternalPort   int      `etcd:{ .ID }/InternalPort`
-	EnvIDs         []string `etcd:{ .ID }/EnvsIDs`
 	RunMax         bool     `etcd:{ .ID }/RunMax`
+	StartupCommand string   `etcd:{ .ID }/StartupCommand`
 	WebEndpoints   []string `etcd:{ .ID }/WebEndpoints/`
 }
 
 type Cluster struct {
 	Envs    []Env    `etcd:/sporedock/clusters/{.ID}/envs/`
-	WebApps []WebApp `etcd:/sporedock/cluster/{ .ID }/webapps/`
-	ID      string   `etcd:/sporedock/clusters/{.ID}`
 	Docker  Docker   `etcd:/sporedock/clusters/{.ID}/docker`
+	ID      string   `etcd:/sporedock/clusters/{.ID}`
+	WebApps []WebApp `etcd:/sporedock/cluster/{ .ID }/webapps/`
 }

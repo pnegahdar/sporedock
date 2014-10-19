@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/aryann/difflib"
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
+	"strings"
 )
 
 func indentJSon(marshalled []byte) string {
@@ -44,10 +46,13 @@ func ImportClusterConfigFromFile(filepath string) {
 	detected_json_marshal, err := json.Marshal(cluster)
 	utils.HandleError(err)
 	if len(full_json_marshal) != len(detected_json_marshal) {
-		utils.LogWarn("Full JSON Provided:")
-		utils.LogDebug("\n" + indentJSon(full_json_marshal))
-		utils.LogWarn("Parsed Structured JSON:")
-		utils.LogDebug("\n" + indentJSon(detected_json_marshal))
+		diffs := difflib.Diff(strings.Split(indentJSon(full_json_marshal), "\n"), strings.Split(indentJSon(detected_json_marshal), "\n"))
+		utils.LogWarn("Diff between detected and provided JSON:")
+		for _, diff := range diffs {
+			if diff.Delta != difflib.Common {
+				utils.LogWarn(diff.Delta.String() + "     " + diff.Payload)
+			}
+		}
 		utils.HandleError(errors.New("The JSON provided has bad structure."))
 	}
 	SetClusterConfig(cluster)
