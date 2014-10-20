@@ -3,13 +3,13 @@ package config
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
 	"text/template"
 )
 
-func flatten(prefix string, value reflect.Value, data *[][]string) {
-	// ATTEMPT TO DO THIS AUTOMAGICALLY USING TAGS... SET ASIDE FOR NOW....
+func flatten(prefix string, value reflect.Value, data map[string]string) {
 	switch value.Kind() {
 	case reflect.Struct:
 		for i := 0; i < value.NumField(); i++ {
@@ -23,23 +23,41 @@ func flatten(prefix string, value reflect.Value, data *[][]string) {
 			flatten(prefix+buffer.String(), item, data)
 		}
 	case reflect.Slice:
-		for i := 0; i < value.Len(); i++ {
-			flatten(prefix, value.Index(i), data)
+		fmt.Println(value.Type())
+		switch value.Type() {
+		case reflect.Type([]string):
+			for i := 0; i < value.Len(); i++ {
+				add := value.Index(i).Interface().(string)
+				data[prefix+add] = add
+			}
+		default:
+			for i := 0; i < value.Len(); i++ {
+				flatten(prefix, value.Index(i), data)
+			}
 		}
 	case reflect.String:
-		*data = append(*data, []string{prefix, value.Interface().(string)})
+		if _, exists := data[prefix]; exists {
+			utils.HandleError(errors.New("Duplicate key " + prefix))
+		}
+		data[prefix] = value.Interface().(string)
 	case reflect.Map:
 		for k, v := range value.Interface().(map[string]string) {
-			*data = append(*data, []string{prefix + k, v})
+			if _, exists := data[prefix+k]; exists {
+				utils.HandleError(errors.New("Duplicate key " + prefix + k))
+			}
+			data[prefix+k] = v
 		}
 	default:
 		utils.HandleError(errors.New("Unidentified type slipped though. Please check."))
 	}
 }
 
-func ConvertClusterConfigToKeySet(cluster Cluster) [][]string {
+func ConvertClusterConfigToKeySet(cluster Cluster) map[string]string {
 	val := reflect.ValueOf(cluster)
-	var data [][]string
-	flatten("", val, &data)
+	var data = make(map[string]string)
+	flatten("", val, data)
+	//	for k, v := range(data){
+	//		fmt.Println(k,"    ->   ", v)
+	//	}
 	return data
 }

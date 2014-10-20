@@ -27,7 +27,7 @@
             "StartupCommand" : "Yo",
             "EnvIDs": ["Dev"],
             "RunMax": "false",
-            "WebEndpoints": ["test.flask.com"]
+            "WebEndpoints": ["test.flask.com", "test2.flask.com"]
         }
     ]
 }
