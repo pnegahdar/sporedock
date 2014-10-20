@@ -1,5 +1,5 @@
 {
-    "ID": "My Web Cluster",
+    "ID": "Cluster1",
     "Docker" : {
         "Host" : "myhost.docker.com"
     },
@@ -21,12 +21,12 @@
     ],
     "WebApps": [
         {
-            "ID": "Demo Flask App",
+            "ID": "DemoFlaskApp",
             "Image": "arturaugusto/flask-sample:latest",
-            "InternalPort": 5000,
+            "InternalPort": "false",
             "StartupCommand" : "Yo",
             "EnvIDs": ["Dev"],
-            "RunMax": false,
+            "RunMax": "false",
             "WebEndpoints": ["test.flask.com"]
         }
     ]
