@@ -2,47 +2,15 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
 	"text/template"
-	"fmt"
 )
 
-func blah(prefix string, value reflect.Value ) [][]string {
+func flatten(prefix string, value reflect.Value, data *[][]string) {
 	// ATTEMPT TO DO THIS AUTOMAGICALLY USING TAGS... SET ASIDE FOR NOW....
-	var data [][]string
-	for i := 0; i < value.NumField(); i++ {
-		var buffer bytes.Buffer
-
-		type_key := value.Type().Field(i)
-		item := value.Field(i)
-		tags := type_key.Tag
-		etcd_tag := tags.Get("etcd")
-
-
-		tmpl, err := template.New("etcd").Parse(etcd_tag)
-		utils.HandleError(err)
-		tmpl.Execute(&buffer, value.Interface())
-		switch item.Kind() {
-		case reflect.String:
-			data = append(data, []string{buffer.String(), item.Interface().(string)})
-		case reflect.Slice:
-			for ind:=0; ind<item.Len();ind++{
-				fmt.Println(item.Index(ind))
-				data = append(data, flattenStruct(etcd_tag, item.Index(ind))...)
-				fmt.Println(item.Index(ind).Interface())
-		}
-		}
-	}
-	fmt.Println(data)
-	return data
-}
-
-
-func flattenStruct(prefix string, value reflect.Value ) [][]string {
-	// ATTEMPT TO DO THIS AUTOMAGICALLY USING TAGS... SET ASIDE FOR NOW....
-	var data [][]string
-	switch value.Kind(){
+	switch value.Kind() {
 	case reflect.Struct:
 		for i := 0; i < value.NumField(); i++ {
 			var buffer bytes.Buffer
@@ -52,17 +20,26 @@ func flattenStruct(prefix string, value reflect.Value ) [][]string {
 			etcd_tag := tags.Get("etcd")
 			tmpl, _ := template.New("etcd").Parse(etcd_tag)
 			tmpl.Execute(&buffer, value.Interface())
-			data = append(data, flattenStruct(buffer.String(), item)...)
-
+			flatten(prefix+buffer.String(), item, data)
+		}
+	case reflect.Slice:
+		for i := 0; i < value.Len(); i++ {
+			flatten(prefix, value.Index(i), data)
 		}
 	case reflect.String:
-		data = append(data, []string{prefix, value.Interface().(string)})
+		*data = append(*data, []string{prefix, value.Interface().(string)})
+	case reflect.Map:
+		for k, v := range value.Interface().(map[string]string) {
+			*data = append(*data, []string{prefix + k, v})
+		}
+	default:
+		utils.HandleError(errors.New("Unidentified type slipped though. Please check."))
 	}
-	fmt.Println(data)
-	return data
 }
 
-func ConvertClusterConfigToKeySet(cluster Cluster) {
+func ConvertClusterConfigToKeySet(cluster Cluster) [][]string {
 	val := reflect.ValueOf(cluster)
-	_ = flattenStruct("", val)
+	var data [][]string
+	flatten("", val, &data)
+	return data
 }

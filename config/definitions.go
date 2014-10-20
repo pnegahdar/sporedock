@@ -2,11 +2,11 @@ package config
 
 type Env struct {
 	Env map[string]string `etcd:"{{ .ID }}/{{ .KEY }}"`
-	ID  string            `etcd:"{{ .ID }}"`
+	ID  string            `etcd:"{{ .ID }}/"`
 }
 
 type Docker struct {
-	Host string `etcd:"/Host"`
+	Host string `etcd:"Host"`
 }
 
 type WebApp struct {
@@ -16,17 +16,12 @@ type WebApp struct {
 	InternalPort   string   `etcd:"{{ .ID }}/InternalPort"`
 	RunMax         string   `etcd:"{{ .ID }}/RunMax"`
 	StartupCommand string   `etcd:"{{ .ID }}/StartupCommand"`
-	WebEndpoints   []string `etcd:"{{ .ID }}/WebEndpoints/"`
+	WebEndpoints   []string `etcd:"{{ .ID }}/WebEndpoints"`
 }
 
 type Cluster struct {
 	Envs    []Env    `etcd:"/sporedock/clusters/{{ .ID }}/envs/"`
-	Docker  Docker   `etcd:"/sporedock/clusters/{{ .ID }}/docker"`
-	ID      string   `etcd:"/sporedock/clusters/{{ .ID }}"`
+	Docker  Docker   `etcd:"/sporedock/clusters/{{ .ID }}/docker/"`
+	ID      string   `etcd:"/sporedock/clusters/{{ .ID }}/"`
 	WebApps []WebApp `etcd:"/sporedock/cluster/{{ .ID }}/webapps/"`
-}
-
-
-func (Cluster) add(){
-
 }
