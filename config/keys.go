@@ -3,32 +3,34 @@ package config
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
 	"text/template"
 )
+
+func addSafe(data map[string]string, key string, value string) {
+	if _, exists := data[key]; exists {
+		utils.HandleError(errors.New("Duplicate key " + key))
+	}
+	data[key] = value
+}
 
 func flatten(prefix string, value reflect.Value, data map[string]string) {
 	switch value.Kind() {
 	case reflect.Struct:
 		for i := 0; i < value.NumField(); i++ {
 			var buffer bytes.Buffer
-			type_key := value.Type().Field(i)
-			item := value.Field(i)
-			tags := type_key.Tag
-			etcd_tag := tags.Get("etcd")
-			tmpl, _ := template.New("etcd").Parse(etcd_tag)
+			flatten_tag := value.Type().Field(i).Tag.Get("flatten")
+			tmpl, _ := template.New("flatten").Parse(flatten_tag)
 			tmpl.Execute(&buffer, value.Interface())
-			flatten(prefix+buffer.String(), item, data)
+			flatten(prefix+buffer.String(), value.Field(i), data)
 		}
 	case reflect.Slice:
-		fmt.Println(value.Type())
 		switch value.Type() {
-		case reflect.Type([]string):
+		case reflect.TypeOf([]string{}):
 			for i := 0; i < value.Len(); i++ {
 				add := value.Index(i).Interface().(string)
-				data[prefix+add] = add
+				addSafe(data, prefix+add, add)
 			}
 		default:
 			for i := 0; i < value.Len(); i++ {
@@ -36,16 +38,10 @@ func flatten(prefix string, value reflect.Value, data map[string]string) {
 			}
 		}
 	case reflect.String:
-		if _, exists := data[prefix]; exists {
-			utils.HandleError(errors.New("Duplicate key " + prefix))
-		}
-		data[prefix] = value.Interface().(string)
+		addSafe(data, prefix, value.Interface().(string))
 	case reflect.Map:
 		for k, v := range value.Interface().(map[string]string) {
-			if _, exists := data[prefix+k]; exists {
-				utils.HandleError(errors.New("Duplicate key " + prefix + k))
-			}
-			data[prefix+k] = v
+			addSafe(data, prefix+k, v)
 		}
 	default:
 		utils.HandleError(errors.New("Unidentified type slipped though. Please check."))
@@ -56,8 +52,5 @@ func ConvertClusterConfigToKeySet(cluster Cluster) map[string]string {
 	val := reflect.ValueOf(cluster)
 	var data = make(map[string]string)
 	flatten("", val, data)
-	//	for k, v := range(data){
-	//		fmt.Println(k,"    ->   ", v)
-	//	}
 	return data
 }

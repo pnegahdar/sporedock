@@ -1,27 +1,27 @@
 package config
 
 type Env struct {
-	Env map[string]string `etcd:"{{ .ID }}/{{ .KEY }}"`
-	ID  string            `etcd:"{{ .ID }}/"`
+	Env map[string]string `flatten:"{{ .ID }}/{{ .KEY }}"`
+	ID  string            `flatten:"{{ .ID }}/"`
 }
 
 type Docker struct {
-	Host string `etcd:"Host"`
+	Host string `flatten:"Host"`
 }
 
 type WebApp struct {
-	EnvIDs         []string `etcd:"{{ .ID }}/EnvsIDs"`
-	ID             string   `etcd:"{{ .ID }}"`
-	Image          string   `etcd:"{{ .ID }}/Image"`
-	InternalPort   string   `etcd:"{{ .ID }}/InternalPort"`
-	RunMax         string   `etcd:"{{ .ID }}/RunMax"`
-	StartupCommand string   `etcd:"{{ .ID }}/StartupCommand"`
-	WebEndpoints   []string `etcd:"{{ .ID }}/WebEndpoints"`
+	EnvIDs         []string `flatten:"{{ .ID }}/EnvsIDs/"`
+	ID             string   `flatten:"{{ .ID }}"`
+	Image          string   `flatten:"{{ .ID }}/Image"`
+	InternalPort   string   `flatten:"{{ .ID }}/InternalPort"`
+	RunMax         string   `flatten:"{{ .ID }}/RunMax"`
+	StartupCommand string   `flatten:"{{ .ID }}/StartupCommand"`
+	WebEndpoints   []string `flatten:"{{ .ID }}/WebEndpoints/"`
 }
 
 type Cluster struct {
-	Envs    []Env    `etcd:"/sporedock/clusters/{{ .ID }}/envs/"`
-	Docker  Docker   `etcd:"/sporedock/clusters/{{ .ID }}/docker/"`
-	ID      string   `etcd:"/sporedock/clusters/{{ .ID }}/"`
-	WebApps []WebApp `etcd:"/sporedock/cluster/{{ .ID }}/webapps/"`
+	Envs    []Env    `flatten:"/sporedock/clusters/{{ .ID }}/envs/"`
+	Docker  Docker   `flatten:"/sporedock/clusters/{{ .ID }}/docker/"`
+	ID      string   `flatten:"/sporedock/clusters/{{ .ID }}/"`
+	WebApps []WebApp `flatten:"/sporedock/cluster/{{ .ID }}/webapps/"`
 }
