@@ -58,5 +58,4 @@ func ImportClusterConfigFromFile(filepath string) {
 	SetClusterConfig(cluster)
 }
 func ExportClusterToFile(filepath string) {
-
 }
