@@ -7,7 +7,6 @@ import (
 type EtcdStore struct {
 	service service.EtcdService
 }
-
 func (store EtcdStore) Get(string) string {
 	return ""
 }

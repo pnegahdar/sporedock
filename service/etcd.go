@@ -32,7 +32,7 @@ func getDiscoveryPeers() []string {
 
 type EtcdService struct {
 }
-func (s EtcdService) Init(Config) {
+func (s EtcdService) Init() {
 	if &EtcdClientInstance == nil {
 		EtcdClientInstance = etcdclient.NewClient(getDiscoveryPeers())
 	}

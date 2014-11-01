@@ -6,10 +6,8 @@ type Machine struct {
 }
 
 type SporeDockDiscovery interface {
-	GetService()
 	ListMachines() []Machine
 	CurrentMachine() Machine
 	GetLeader() Machine
 	AmLeader() bool
-	Run()
 }

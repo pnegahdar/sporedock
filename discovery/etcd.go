@@ -7,10 +7,6 @@ import (
 type EtcdDiscovery struct {
 	service service.EtcdService
 }
-
-func (d EtcdDiscovery) GetService() {
-}
-
 func (d EtcdDiscovery) ListMachines() []Machine {
 	return []Machine{}
 }
@@ -23,8 +19,4 @@ func (d EtcdDiscovery) GetLeader() Machine {
 }
 func (d EtcdDiscovery) AmLeader() bool {
 	return true
-}
-
-func (d EtcdDiscovery) Run() {
-
 }

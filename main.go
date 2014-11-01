@@ -12,7 +12,9 @@ var Discovery discovery.SporeDockDiscovery
 
 func setModules() {
 	Store = store.EtcdStore{}
+	Store.Init()
 	Discovery = discovery.EtcdDiscovery{}
+	Discovery.Init()
 }
 
 func startModules(){
