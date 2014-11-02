@@ -1,18 +1,21 @@
-package service
+package server
 
 import (
 	"encoding/json"
-	etcdservice "github.com/coreos/etcd/etcd"
 	etcdserviceconfig "github.com/coreos/etcd/config"
+	etcdservice "github.com/coreos/etcd/etcd"
+	etcdpeersclient "github.com/coreos/etcd/server"
 	etcdclient "github.com/coreos/go-etcd/etcd"
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
-var EtcdClientInstance *etcdclient.Client
-var EtcdServiceInstance *etcdservice.Etcd
+var etcdClient *etcdclient.Client
+var etcdServer *etcdservice.Etcd
+var etcdPeerClient *etcdpeersclient.Client
 
 func getDiscoveryPeers() []string {
 	resp, err := http.Get(settings.GetDiscoveryString())
@@ -25,26 +28,32 @@ func getDiscoveryPeers() []string {
 	utils.HandleError(err)
 	var peers []string
 	for _, v := range data.Node.Nodes {
-		peers = append(peers, v.Value)
+		peers = append(peers, "http:"+strings.Split(v.Value, ":")[1]+":4001")
 	}
 	return peers
 }
 
-type EtcdService struct {
-}
-func (s EtcdService) Init() {
-	if &EtcdClientInstance == nil {
-		EtcdClientInstance = etcdclient.NewClient(getDiscoveryPeers())
+func EtcdClient() *etcdclient.Client {
+	if etcdClient == nil {
+		etcdClient = etcdclient.NewClient(getDiscoveryPeers())
 	}
-	if &EtcdServiceInstance == nil {
+	return etcdClient
+
+}
+func EtcdServer() *etcdservice.Etcd {
+	if etcdServer == nil {
 		config := etcdserviceconfig.New()
 		config.Name = settings.GetInstanceName()
 		config.DataDir = settings.GetEtcdDataDir()
 		config.Discovery = settings.GetDiscoveryString()
-		EtcdServiceInstance = etcdservice.New(config)
+		etcdServer = etcdservice.New(config)
 	}
+	return etcdServer
 }
 
-func (s EtcdService) Run() {
-	EtcdServiceInstance.Run()
+func EtcdPeerClient() *etcdpeersclient.Client {
+	if etcdPeerClient == nil {
+		etcdPeerClient = etcdpeersclient.NewClient(&http.Transport{})
+	}
+	return etcdPeerClient
 }

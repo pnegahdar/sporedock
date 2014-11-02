@@ -9,7 +9,7 @@ var log, _ = logger.New("test", 1, os.Stdout)
 
 func HandleError(err error) {
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Error(err.Error())
 	}
 }
 

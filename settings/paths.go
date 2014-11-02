@@ -2,6 +2,7 @@ package settings
 
 import (
 	"github.com/mitchellh/go-homedir"
+	"os"
 	"path"
 )
 
@@ -21,4 +22,8 @@ func GetDiscoveryConfPath() string {
 
 func GetEtcdDataDir() string {
 	return GetProjectPath("etcd/")
+}
+
+func init() {
+	os.Mkdir(ProjectBaseDir, 0700)
 }

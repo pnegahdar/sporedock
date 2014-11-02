@@ -1,22 +1,53 @@
 package discovery
 
 import (
-	"github.com/pnegahdar/sporedock/service"
+	"errors"
+	"github.com/pnegahdar/sporedock/server"
+	"github.com/pnegahdar/sporedock/utils"
+	"strings"
 )
 
-type EtcdDiscovery struct {
-	service service.EtcdService
-}
-func (d EtcdDiscovery) ListMachines() []Machine {
-	return []Machine{}
+type Machine struct {
+	Name      string
+	State     string
+	ClientURL string
+	PeerURL   string
 }
 
-func (d EtcdDiscovery) CurrentMachine() Machine {
+func ListMachines() []Machine {
+	resp, err := server.EtcdPeerClient().GetMachines("http://127.0.0.1:7001")
+	if err != nil {
+		utils.HandleError(errors.New(err.Message))
+	}
+	machines := []Machine{}
+	for _, m := range resp {
+		machines = append(machines, Machine{Name: m.Name, State: m.State, ClientURL: m.ClientURL, PeerURL: m.PeerURL})
+	}
+	return machines
+}
+
+func CurrentMachine() Machine {
+	machines := ListMachines()
+	for _, v := range machines {
+		if strings.Index(v.ClientURL, "127.0.0.1") != -1 {
+			return v
+		}
+	}
+	utils.HandleError(errors.New("Current machine not found!"))
 	return Machine{}
 }
-func (d EtcdDiscovery) GetLeader() Machine {
-	return Machine{}
+
+func GetLeader() (Machine, *errors.Error) {
+	machines := ListMachines()
+	for _, v := range machines {
+		if v.State == "leader" {
+			return v, nil
+		}
+	}
+	err := errors.New("Leader not found")
+	return Machine{}, *err
 }
-func (d EtcdDiscovery) AmLeader() bool {
-	return true
+func AmLeader() bool {
+	me := CurrentMachine()
+	return me.State == "leader"
 }

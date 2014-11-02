@@ -11,6 +11,7 @@ func GetInstanceName() string {
 	filePath := GetInstanceIdConfPath()
 	data := getFileContentsString(filePath)
 	if data == "" {
+		// Todo(parham): use a non random uuid
 		uuidBase := uuid.NewRandom()
 		uuidString := uuid.NewSHA1(uuidBase, nil).String()
 		writeFileContentsString(filePath, uuidString)
@@ -39,5 +40,6 @@ func getFileContentsString(path string) string {
 	return string(fileData[:])
 }
 func writeFileContentsString(path string, content string) {
-	ioutil.WriteFile(path, []byte(content), 0644)
+	err := ioutil.WriteFile(path, []byte(content), 700)
+	utils.HandleError(err)
 }
