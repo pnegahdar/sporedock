@@ -37,7 +37,7 @@ func CurrentMachine() Machine {
 	return Machine{}
 }
 
-func GetLeader() (Machine, *errors.Error) {
+func GetLeader() (Machine, error) {
 	machines := ListMachines()
 	for _, v := range machines {
 		if v.State == "leader" {
@@ -45,7 +45,7 @@ func GetLeader() (Machine, *errors.Error) {
 		}
 	}
 	err := errors.New("Leader not found")
-	return Machine{}, *err
+	return Machine{}, err
 }
 func AmLeader() bool {
 	me := CurrentMachine()
