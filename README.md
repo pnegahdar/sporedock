@@ -68,3 +68,5 @@ Scale/Stop Apps. Automatically distributing them across the cluster
 
 
 `Web|Workers` are automatically moved around as needed to maximize their distribution. If a node binds to a webapp it will be added to Vulcan's load balancer dynamically and traffic will be routed to the correct place as the node moves around. Should a node die, all procs will be redistributed.
+
+

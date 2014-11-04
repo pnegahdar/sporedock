@@ -1,4 +1,4 @@
-package settings
+package config
 
 const ETCD_CONFIGS_KEY = "/sporedock/configs/"
 const ETCD_MANIFESTS_KEY = "/sporedock/manifests/"

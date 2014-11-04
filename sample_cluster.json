@@ -1,8 +1,5 @@
 {
     "ID": "Cluster1",
-    "Docker" : {
-        "Host" : "myhost.docker.com"
-    },
     "Envs": [
         {
             "ID": "Dev",
@@ -26,7 +23,6 @@
             "InternalPort": "false",
             "StartupCommand" : "Yo",
             "EnvIDs": ["Dev"],
-            "RunMax": "false",
             "WebEndpoints": ["test.flask.com", "test2.flask.com"]
         }
     ]

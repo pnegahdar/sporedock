@@ -48,7 +48,7 @@ func flatten(prefix string, value reflect.Value, data map[string]string) {
 	}
 }
 
-func ConvertClusterConfigToKeySet(cluster Cluster) map[string]string {
+func Flatten(cluster Cluster) map[string]string {
 	val := reflect.ValueOf(cluster)
 	var data = make(map[string]string)
 	flatten("", val, data)
