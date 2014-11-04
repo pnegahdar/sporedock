@@ -46,6 +46,7 @@ func (c *Cluster) UnMarshall(data string) error {
 	return nil
 }
 
+
 func (c Cluster) Validate() {
 	Flatten(c)
 }
