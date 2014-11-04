@@ -35,30 +35,36 @@ Begin sporedock daemon on the node:
 
 **Thats it, node is now part of cluster**
 
-Logs all the nodes into the docker registry where images will be retrieved
-
-    sporedock registry login <user> <pass>
-
 Set up environments
 
     sporedock env create <env_name>
     sporedock env add -env <env_name> -key <key> -value <value>
-    sporedock env load -env <env_name> -file <file>
+    sporedock env rm -env <env_name>
 
 
 Distribute Apps. Gets the apps ready to deploy on all the nodes
 
-    sporedock apps add -name <app_name> -image <docker_image> -binds <optinal:hostname> -env <env_name>
+    sporedock apps add -name <unique_app_name> -image <docker_image> -env <env_name>
 
 List Apps
 
     sporedock apps list
 
-Scale/Stop Apps. Automatically distributing them accross the cluster
+Scale/Stop Apps. Automatically distributing them across the cluster
 
-    sporedock deploy <app_name> 10
+**Web Apps**
+
+    sporedock launch_webapp <app_name> --scale <count> --host 'dev.daefs.apps.kensho.com' // Test the endpoint
+    sporedock addhost <app_name> --host 'staging.kensho.com'
+    sporedock rmhost <app_name> --host 'staging.kensho.com'
+
+**Service Apps**
+
+    sporedock launch <app_name> --scale <count>
+
+**ALL**
+
     sporedock stop <app_name>
-    sporedock deploy <app_name> 5
 
 
-Apps/Webapps are automatically moved around as needed to maximize their distribution. If a node binds to a webapp it will be added to Vulcan's load balancer dynamically and traffic will be routed to the correct place as the node moves around. Should a node die, all procs will be redistributed.
+`Web|Workers` are automatically moved around as needed to maximize their distribution. If a node binds to a webapp it will be added to Vulcan's load balancer dynamically and traffic will be routed to the correct place as the node moves around. Should a node die, all procs will be redistributed.
