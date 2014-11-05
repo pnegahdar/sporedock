@@ -21,7 +21,9 @@
             "ID": "DemoFlaskApp",
             "Image": "arturaugusto/flask-sample:latest",
             "Env": "Dev",
-            "WebEndpoints": ["test.flask.com", "test2.flask.com"]
+            "WebEndpoints": ["test.flask.com", "test2.flask.com"],
+            "Count" : 5,
+            "Weight" : 0.8
         }
     ],
     "WorkerApps": [
@@ -30,6 +32,8 @@
             "Image": "arturaugusto/flask-sample:latest",
             "Env": "Dev",
             "WebEndpoints": ["test.flask.com", "test2.flask.com"]
+            "Count" : 3,
+            "Weight" : 0.5
         }
     ]
 }

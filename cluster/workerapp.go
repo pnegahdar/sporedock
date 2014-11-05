@@ -1,44 +1,54 @@
 package cluster
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/pnegahdar/sporedock/discovery"
+	"github.com/pnegahdar/sporedock/server"
+	"github.com/pnegahdar/sporedock/utils"
+)
 
 type WorkerApp struct {
-	Env   string `flatten:"{{ .ID }}/Env/"`
-	ID    string `flatten:"{{ .ID }}"`
-	Image string `flatten:"{{ .ID }}/Image"`
+	Count  int     `flatten:"{{ .ID }}/Count"`
+	Env    string  `flatten:"{{ .ID }}/Env/"`
+	ID     string  `flatten:"{{ .ID }}"`
+	Image  string  `flatten:"{{ .ID }}/Image"`
+	Weight float32 `flatten:"{{ .ID }}/Weight"`
 }
 
 type WorkerApps []WorkerApp
 
-func (wa) Marshall() (string, error) {
-	resp, err := json.Marshal(wa)
-	if err != nil {
-		return "", err
-	}
-	return string(resp[:]), nil
-}
-
-func (e *Env) UnMarshall(data string) error {
-	err := json.Unmarshal([]byte(data), e)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (wa WorkerApp) getEtcdKey( string) string {
-	return ETCD_ENV_PREFIX + wa.ID
-}
-
-func (wa WorkerApp) EtcdSet() {
-	data_json, err1 := e.Marshall()
-	utils.HandleError(err1)
-	_, err1 := server.EtcdClient().Set(e.getEtcdKey(), data_json, 0)
-	utils.HandleError(err1)
-}
-
-func (e *Env) EtcdGet() {
-	etcd_resp, err := server.EtcdClient().Get(e.getEtcdKey(), false, false)
+func (wa WorkerApps) EtcdSet() {
+	data_json, err := marshall(wa)
 	utils.HandleError(err)
-	e.UnMarshall(etcd_resp.Node.Value)
+	_, err1 := server.EtcdClient().Set(WorkerAppsKey, data_json, 0)
+	utils.HandleError(err1)
+}
+
+func (wa *WorkerApps) EtcdGet() {
+	etcd_resp, err := server.EtcdClient().Get(WorkerAppsKey, false, false)
+	utils.HandleError(err)
+	unmarshall(etcd_resp.Node.Value, wa)
+}
+
+type WorkerAppManifest struct {
+	App     WorkerApp
+	Machine discovery.Machine
+}
+
+type WorkerAppsManifests []WorkerAppManifest
+
+func (w WorkerAppsManifests) Build() {
+
+}
+func (w WorkerAppsManifests) EtcdSet() {
+	data_json, err := marshall(w)
+	utils.HandleError(err)
+	_, err1 := server.EtcdClient().Set(WorkerAppManifestsKey, data_json, 0)
+	utils.HandleError(err1)
+}
+
+func (w *WorkerAppsManifests) EtcdGet() {
+	etcd_resp, err := server.EtcdClient().Get(WorkerAppManifestsKey, false, false)
+	utils.HandleError(err)
+	unmarshall(etcd_resp.Node.Value, w)
 }

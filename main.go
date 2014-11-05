@@ -20,7 +20,7 @@ func main() {
 	setUp()
 	fmt.Println(discovery.CurrentMachine())
 	logging.SetLevel(logging.DEBUG, "main")
-	var c config.Cluster
+	var c cluster.Cluster
 	c.Import("sample_cluster.json")
 	for {
 		time.Sleep(1)

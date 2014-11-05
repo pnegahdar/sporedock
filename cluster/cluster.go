@@ -11,12 +11,11 @@ import (
 )
 
 type Cluster struct {
-	Envs       Envs       `flatten:"/sporedock/clusters/{{ .ID }}/Envs/"`
-	ID         string      `flatten:"/sporedock/clusters/{{ .ID }}/"`
-	WebApps    WebApps    `flatten:"/sporedock/cluster/{{ .ID }}/WebApps/"`
+	Envs       Envs      `flatten:"/sporedock/clusters/{{ .ID }}/Envs/"`
+	ID         string    `flatten:"/sporedock/clusters/{{ .ID }}/"`
+	WebApps    WebApps   `flatten:"/sporedock/cluster/{{ .ID }}/WebApps/"`
 	WorkerApps WorkerApp `flatten:"/sporedock/cluster/{{ .ID }}/WorkerApps/"`
 }
-
 
 func (c Cluster) Marshall() (string, error) {
 	resp, err := json.Marshal(c)
@@ -78,14 +77,14 @@ func (c Cluster) EtcdSet() {
 	c.Validate()
 	cluster_json, err := c.Marshall()
 	utils.HandleError(err)
-	_, err1 := server.EtcdClient().CreateInOrder(ETCD_CONFIGS_KEY, cluster_json, 0)
+	_, err1 := server.EtcdClient().CreateInOrder(ConfigsKey, cluster_json, 0)
 	utils.HandleError(err1)
-	_, err2 := server.EtcdClient().Set(ETCD_CURRENT_CONFIG_KEY, cluster_json, 0)
+	_, err2 := server.EtcdClient().Set(CurrentConfigKey, cluster_json, 0)
 	utils.HandleError(err2)
 }
 
 func (c *Cluster) EtcdGet() {
-	current_config, err := server.EtcdClient().Get(ETCD_CURRENT_CONFIG_KEY, false, false)
+	current_config, err := server.EtcdClient().Get(CurrentConfigKey, false, false)
 	utils.HandleError(err)
 	c.UnMarshall(current_config.Action)
 }

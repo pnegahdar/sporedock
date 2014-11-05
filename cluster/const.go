@@ -1,9 +1,11 @@
 package cluster
 
-const ETCD_CONFIGS_KEY = "/sporedock/configs/"
-const ETCD_MANIFESTS_KEY = "/sporedock/manifests/"
+const ConfigsKey = "/sporedock/configs/"
+const ManifestsKey = "/sporedock/manifests/"
 
-const ETCD_CURRENT_CONFIG_KEY = "/sporedock/current_config"
-const ETCD_CURRENT_MANIFEST_KEY = "/sporedock/current_manifest"
+const EnvsKey = "/sporedock/envs"
 
-const ETCD_ENVS_KEY = "/sporedock/envs"
+const WorkerAppsKey = "/sporedock/workerapps"
+const WorkerAppManifestsKey = "/sporedock/workerapps_manifest"
+const WebAppsKey = "/sporedock/webapps"
+const WebAppsManifestsKey = "/sporedock/webapps_manifest"

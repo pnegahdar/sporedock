@@ -13,31 +13,15 @@ type Env struct {
 
 type Envs []Env
 
-func (e Envs) Marshall() (string, error) {
-	resp, err := json.Marshal(e)
-	if err != nil {
-		return "", err
-	}
-	return string(resp[:]), nil
-}
-
-func (e *Envs) UnMarshall(data string) error {
-	err := json.Unmarshal([]byte(data), e)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (e Env) EtcdSet() {
-	data_json, err1 := e.Marshall()
-	utils.HandleError(err1)
-	_, err1 := server.EtcdClient().Set(e.getEtcdKey(), data_json, 0)
-	utils.HandleError(err1)
-}
-
-func (e *Env) EtcdGet() {
-	etcd_resp, err := server.EtcdClient().Get(e.getEtcdKey(), false, false)
+func (e Envs) EtcdSet() {
+	data_json, err := marshall(e)
 	utils.HandleError(err)
-	e.UnMarshall(etcd_resp.Node.Value)
+	_, err1 := server.EtcdClient().Set(EnvsKey, data_json, 0)
+	utils.HandleError(err1)
+}
+
+func (e *Envs) EtcdGet() {
+	etcd_resp, err := server.EtcdClient().Get(EnvsKey, false, false)
+	utils.HandleError(err)
+	unmarshall(etcd_resp.Node.Value, e)
 }
