@@ -1,7 +1,8 @@
-package config
+package cluster
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
@@ -48,7 +49,14 @@ func flatten(prefix string, value reflect.Value, data map[string]string) {
 	}
 }
 
-func Flatten(cluster Cluster) map[string]string {
+func indentJSon(marshalled []byte) string {
+	var buffer bytes.Buffer
+	err := json.Indent(&buffer, marshalled, "", "    ")
+	utils.HandleError(err)
+	return buffer.String()
+}
+
+func flattenCluster(cluster Cluster) map[string]string {
 	val := reflect.ValueOf(cluster)
 	var data = make(map[string]string)
 	flatten("", val, data)

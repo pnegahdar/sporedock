@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	logging "github.com/op/go-logging"
-	"github.com/pnegahdar/sporedock/config"
+	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/discovery"
 	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/settings"
@@ -20,7 +20,8 @@ func main() {
 	setUp()
 	fmt.Println(discovery.CurrentMachine())
 	logging.SetLevel(logging.DEBUG, "main")
-	config.ImportClusterConfigFromFile("sample_cluster.json")
+	var c config.Cluster
+	c.Import("sample_cluster.json")
 	for {
 		time.Sleep(1)
 	}

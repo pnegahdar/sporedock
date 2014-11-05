@@ -20,9 +20,15 @@
         {
             "ID": "DemoFlaskApp",
             "Image": "arturaugusto/flask-sample:latest",
-            "InternalPort": "false",
-            "StartupCommand" : "Yo",
-            "EnvIDs": ["Dev"],
+            "Env": "Dev",
+            "WebEndpoints": ["test.flask.com", "test2.flask.com"]
+        }
+    ],
+    "WorkerApps": [
+        {
+            "ID": "DemoFlaskApp",
+            "Image": "arturaugusto/flask-sample:latest",
+            "Env": "Dev",
             "WebEndpoints": ["test.flask.com", "test2.flask.com"]
         }
     ]
