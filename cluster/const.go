@@ -1,7 +1,9 @@
 package cluster
 
 const ConfigsKey = "/sporedock/configs/"
+const CurrentConfigKey = "/sporedock/config"
 const ManifestsKey = "/sporedock/manifests/"
+const CurrentManifestKey = "/sporedock/manifest"
 
 const EnvsKey = "/sporedock/envs"
 

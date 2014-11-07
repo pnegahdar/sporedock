@@ -71,7 +71,7 @@ func marshall(i interface{}) (string, error) {
 	return string(resp[:]), nil
 }
 
-func unmarshall(data string, i *interface{}) error {
+func unmarshall(data string, i interface{}) error {
 	err := json.Unmarshal([]byte(data), i)
 	if err != nil {
 		return err

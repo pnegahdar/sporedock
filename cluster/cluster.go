@@ -11,10 +11,10 @@ import (
 )
 
 type Cluster struct {
-	Envs       Envs      `flatten:"/sporedock/clusters/{{ .ID }}/Envs/"`
-	ID         string    `flatten:"/sporedock/clusters/{{ .ID }}/"`
-	WebApps    WebApps   `flatten:"/sporedock/cluster/{{ .ID }}/WebApps/"`
-	WorkerApps WorkerApp `flatten:"/sporedock/cluster/{{ .ID }}/WorkerApps/"`
+	Envs       Envs       `flatten:"/sporedock/clusters/{{ .ID }}/Envs/"`
+	ID         string     `flatten:"/sporedock/clusters/{{ .ID }}/"`
+	WebApps    WebApps    `flatten:"/sporedock/cluster/{{ .ID }}/WebApps/"`
+	WorkerApps WorkerApps `flatten:"/sporedock/cluster/{{ .ID }}/WorkerApps/"`
 }
 
 func (c Cluster) Marshall() (string, error) {
@@ -70,10 +70,10 @@ func (c *Cluster) Import(filepath string) {
 		utils.HandleError(errors.New("The JSON provided has bad structure."))
 	}
 	c.Validate()
-	c.EtcdSet()
+	c.Set()
 }
 
-func (c Cluster) EtcdSet() {
+func (c Cluster) Set() {
 	c.Validate()
 	cluster_json, err := c.Marshall()
 	utils.HandleError(err)
@@ -83,7 +83,7 @@ func (c Cluster) EtcdSet() {
 	utils.HandleError(err2)
 }
 
-func (c *Cluster) EtcdGet() {
+func (c *Cluster) Get() {
 	current_config, err := server.EtcdClient().Get(CurrentConfigKey, false, false)
 	utils.HandleError(err)
 	c.UnMarshall(current_config.Action)
