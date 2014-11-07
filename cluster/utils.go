@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
+	"strconv"
 	"text/template"
 )
 
@@ -40,6 +41,10 @@ func flatten(prefix string, value reflect.Value, data map[string]string) {
 		}
 	case reflect.String:
 		addSafe(data, prefix, value.Interface().(string))
+	case reflect.Int:
+		addSafe(data, prefix, string(value.Interface().(int)))
+	case reflect.Float32:
+		addSafe(data, prefix, strconv.FormatFloat(float64(value.Interface().(float32)), 'f', 3, 32))
 	case reflect.Map:
 		for k, v := range value.Interface().(map[string]string) {
 			addSafe(data, prefix+k, v)

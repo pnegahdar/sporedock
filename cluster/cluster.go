@@ -77,7 +77,7 @@ func (c Cluster) Set() {
 	c.Validate()
 	cluster_json, err := c.Marshall()
 	utils.HandleError(err)
-	_, err1 := server.EtcdClient().CreateInOrder(ConfigsKey, cluster_json, 0)
+	_, err1 := server.EtcdClient().CreateInOrder(ConfigsLogKey, cluster_json, 0)
 	utils.HandleError(err1)
 	_, err2 := server.EtcdClient().Set(CurrentConfigKey, cluster_json, 0)
 	utils.HandleError(err2)

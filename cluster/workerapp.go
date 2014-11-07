@@ -47,12 +47,12 @@ func (w WorkerAppsManifests) Build() {
 func (w WorkerAppsManifests) Set() {
 	data_json, err := marshall(w)
 	utils.HandleError(err)
-	_, err1 := server.EtcdClient().Set(WorkerAppManifestsKey, data_json, 0)
+	_, err1 := server.EtcdClient().Set(WorkerAppsKey, data_json, 0)
 	utils.HandleError(err1)
 }
 
 func (w *WorkerAppsManifests) Get() {
-	etcd_resp, err := server.EtcdClient().Get(WorkerAppManifestsKey, false, false)
+	etcd_resp, err := server.EtcdClient().Get(WorkerAppsKey, false, false)
 	utils.HandleError(err)
 	unmarshall(etcd_resp.Node.Value, w)
 }

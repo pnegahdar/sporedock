@@ -18,21 +18,20 @@
     ],
     "WebApps": [
         {
+            "Count" : 5,
             "ID": "DemoFlaskApp",
             "Image": "arturaugusto/flask-sample:latest",
             "Env": "Dev",
-            "WebEndpoints": ["test.flask.com"],
-            "Count" : 5,
+            "WebEndpoints": ["test-web.flask.com"],
             "Weight" : 0.8
         }
     ],
     "WorkerApps": [
         {
+            "Count" : 3,
             "ID": "DemoFlaskApp",
             "Image": "arturaugusto/flask-sample:latest",
             "Env": "Dev",
-            "WebEndpoints": ["test.flask.com"],
-            "Count" : 3,
             "Weight" : 0.5
         }
     ]
