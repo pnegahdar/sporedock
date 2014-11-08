@@ -20,7 +20,7 @@ func main() {
 	runStore()
 	var c cluster.Cluster
 	c.Import("sample_cluster.json")
-	c.Set()
+	c.Push()
 	go director.Direct()
 	for {
 		time.Sleep(1)

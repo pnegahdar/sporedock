@@ -48,5 +48,3 @@ func PullApp(image string, tag string) {
 	err := client.PullImage(image, tag)
 	utils.HandleError(err)
 }
-
-

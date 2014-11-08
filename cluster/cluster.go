@@ -17,28 +17,12 @@ type Cluster struct {
 	WorkerApps WorkerApps `flatten:"/sporedock/cluster/{{ .ID }}/WorkerApps/"`
 }
 
-func (c Cluster) Marshall() (string, error) {
-	resp, err := json.Marshal(c)
-	if err != nil {
-		return "", err
-	}
-	return string(resp[:]), nil
-}
-
-func (c *Cluster) UnMarshall(data string) error {
-	err := json.Unmarshal([]byte(data), c)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (c Cluster) Validate() {
 	flattenCluster(c)
 }
 
 func (c Cluster) Export(filepath string) {
-	marshalled, err := c.Marshall()
+	marshalled, err := marshall(c)
 	utils.HandleError(err)
 	ioutil.WriteFile(filepath, []byte(marshalled), 700)
 }
@@ -56,7 +40,7 @@ func (c *Cluster) Import(filepath string) {
 	json.Unmarshal(fileData, &noschema)
 	full_json_marshal, err := json.Marshal(noschema)
 	utils.HandleError(err)
-	detected_json_marshal, err := c.Marshall()
+	detected_json_marshal, err := marshall(c)
 	utils.HandleError(err)
 	if len(full_json_marshal) != len(detected_json_marshal) {
 		diffs := difflib.Diff(strings.Split(indentJSon(full_json_marshal), "\n"), strings.Split(
@@ -70,12 +54,12 @@ func (c *Cluster) Import(filepath string) {
 		utils.HandleError(errors.New("The JSON provided has bad structure."))
 	}
 	c.Validate()
-	c.Set()
+	c.Push()
 }
 
-func (c Cluster) Set() {
+func (c Cluster) Push() {
 	c.Validate()
-	cluster_json, err := c.Marshall()
+	cluster_json, err := marshall(c)
 	utils.HandleError(err)
 	_, err1 := server.EtcdClient().CreateInOrder(ConfigsLogKey, cluster_json, 0)
 	utils.HandleError(err1)
@@ -83,8 +67,8 @@ func (c Cluster) Set() {
 	utils.HandleError(err2)
 }
 
-func (c *Cluster) Get() {
+func (c *Cluster) Pull() {
 	current_config, err := server.EtcdClient().Get(CurrentConfigKey, false, false)
 	utils.HandleError(err)
-	c.UnMarshall(current_config.Action)
+	unmarshall(current_config.Node.Value, c)
 }

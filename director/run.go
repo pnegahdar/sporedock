@@ -4,8 +4,8 @@ import (
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/discovery"
 	"github.com/pnegahdar/sporedock/settings"
-	"time"
 	"github.com/pnegahdar/sporedock/utils"
+	"time"
 )
 
 func Direct() {
@@ -30,7 +30,7 @@ func SetupApps() {
 func DistributeWork() {
 	utils.LogInfo("Distributing work.")
 	currentCluster := cluster.Cluster{}
-	currentCluster.Get()
+	currentCluster.Pull()
 	pack := cluster.BuildClusterManifest(currentCluster)
-	pack.Set()
+	pack.Push()
 }

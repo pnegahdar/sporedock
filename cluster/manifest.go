@@ -21,7 +21,7 @@ func (pm Manifests) Len() int           { return len(pm) }
 func (pm Manifests) Swap(i, j int)      { pm[i], pm[j] = pm[j], pm[i] }
 func (pm Manifests) Less(i, j int) bool { return pm[i].TotalWeight < pm[j].TotalWeight }
 
-func (ms Manifests) Set() {
+func (ms Manifests) Push() {
 	data_json, err := marshall(ms)
 	utils.HandleError(err)
 	_, err1 := server.EtcdClient().CreateInOrder(ManifestLogsKey, data_json, 0)
@@ -30,14 +30,14 @@ func (ms Manifests) Set() {
 	utils.HandleError(err2)
 }
 
-func (ms *Manifests) Get() {
+func (ms *Manifests) Pull() {
 	etcd_resp, err := server.EtcdClient().Get(CurrentManifestKey, false, false)
 	utils.HandleError(err)
 	unmarshall(etcd_resp.Node.Value, ms)
 }
 
 func (ms *Manifests) MyManifest(myMachine discovery.Machine) MachineManifest {
-	for _, v := range(*ms) {
+	for _, v := range *ms {
 		if v.Machine == myMachine {
 			return v
 		}
@@ -46,7 +46,6 @@ func (ms *Manifests) MyManifest(myMachine discovery.Machine) MachineManifest {
 }
 
 func BuildClusterManifest(cluster Cluster) Manifests {
-	utils.LogInfo(fmt.Sprintf("CLUSTER: %v", cluster))
 	return buildAppManifests(cluster.WebApps, cluster.WorkerApps)
 }
 
@@ -64,10 +63,7 @@ func buildAppManifests(webapps WebApps, workerapps WorkerApps) Manifests {
 		packedMachine := MachineManifest{Machine: x}
 		manifests = append(manifests, packedMachine)
 	}
-	utils.LogInfo(fmt.Sprintf("%v %v", len(workerapps), len(webapps)))
-	utils.LogInfo(fmt.Sprintf("%v %v", len(webappsCopy), len(workerappsCopy)))
 	for i := 0; i < len(webappsCopy)+len(workerappsCopy); i++ {
-		utils.LogInfo("HERE")
 		if webappsCopy[0].Weight > workerappsCopy[0].Weight {
 			addWebApp(webappsCopy[0], manifests)
 			webappsCopy = webappsCopy[1:]
@@ -80,7 +76,6 @@ func buildAppManifests(webapps WebApps, workerapps WorkerApps) Manifests {
 }
 
 func addWebApp(webapp WebApp, machines Manifests) {
-	utils.LogInfo(fmt.Sprintf("Adding webapp %v", webapp.ID))
 	count := webapp.Count
 	if count > len(machines) {
 		utils.LogWarn(fmt.Sprintf("App %v has a count %v that is greater than the machine count %v. Using machine count instead.", webapp.ID, webapp.Count, len(machines)))
