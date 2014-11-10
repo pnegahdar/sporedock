@@ -1,12 +1,29 @@
 package cluster
 
+import "github.com/samalba/dockerclient"
+
 type WebApp struct {
 	Count        int      `flatten:"{{ .ID }}/Count"`
 	Env          string   `flatten:"{{ .ID }}/Env/"`
 	ID           string   `flatten:"{{ .ID }}"`
 	Image        string   `flatten:"{{ .ID }}/Image"`
-	WebEndpoints []string `flatten:"{{ .ID }}/WebEndpoints/"`
+	Tag          string   `flatten:"{{ .ID }}/Tag"`
+	WebEndpoints []string `flatten:"{{ .ID }}/WebEndpoints/"` // Todo(parham) ensure uniqueness
 	Weight       float32  `flatten:"{{ .ID }}/Weight"`
+}
+
+func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
+	return dockerclient.ContainerConfig{}
+}
+func (wa WebApp) GetImage() string {
+	return wa.Image
+}
+
+func (wa WebApp) GetTag() string {
+	return wa.Tag
+}
+func (wa WebApp) GetName() string {
+	return wa.ID
 }
 
 type WebApps []WebApp

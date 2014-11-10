@@ -1,38 +1,58 @@
 {
-    "ID": "Cluster1",
-    "Envs": [
-        {
-            "ID": "Dev",
-            "Env": {
-                "DB_URL": "dev.db.com",
-                "TYPE": "dev"
-            }
-        },
-        {
-            "ID": "Prod",
-            "Env": {
-                "DB_URL": "prod.db.com",
-                "TYPE": "prod"
-            }
-        }
-    ],
-    "WebApps": [
-        {
-            "Count" : 5,
-            "ID": "DemoFlaskApp",
-            "Image": "arturaugusto/flask-sample:latest",
-            "Env": "Dev",
-            "WebEndpoints": ["test-web.flask.com"],
-            "Weight" : 0.8
-        }
-    ],
-    "WorkerApps": [
-        {
-            "Count" : 3,
-            "ID": "DemoFlaskApp",
-            "Image": "arturaugusto/flask-sample:latest",
-            "Env": "Dev",
-            "Weight" : 0.5
-        }
-    ]
+  "ID": "Cluster1",
+  "Envs": [
+    {
+      "ID": "Dev",
+      "Env": {
+        "DB_URL": "dev.db.com",
+        "TYPE": "dev"
+      }
+    },
+    {
+      "ID": "Prod",
+      "Env": {
+        "DB_URL": "prod.db.com",
+        "TYPE": "prod"
+      }
+    }
+  ],
+  "WebApps": [
+    {
+      "Count": 5,
+      "ID": "DemoFlaskApp1",
+      "Image": "wordpress",
+      "Tag": "latest",
+      "Env": "Dev",
+      "WebEndpoints": ["test-web.flask.com"],
+      "Weight": 0.8
+    },
+    {
+      "Count": 5,
+      "ID": "DemoFlaskApp2",
+      "Image": "mongo",
+      "Tag": "latest",
+      "Env": "Dev",
+      "WebEndpoints": ["test-web.flask.com"],
+      "Weight": 0.8
+    },
+    {
+      "Count": 5,
+      "ID": "DemoFlaskApp3",
+      "Image": "redis",
+      "Tag": "latest",
+      "Env": "Dev",
+      "WebEndpoints": ["test-web.flask.com"],
+      "Weight": 0.8
+    }
+  ],
+  "WorkerApps": [
+    {
+      "Count": 3,
+      "ID": "DemoFlaskApp4",
+      "Image": "arturaugusto/flask-sample",
+      "Tag" : "latest",
+      "Env": "Dev",
+      "Weight": 0.5
+    }
+  ]
 }

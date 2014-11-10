@@ -15,6 +15,17 @@ type MachineManifest struct {
 	TotalWeight float32
 }
 
+func (mm MachineManifest) IterApps() []DockerApp {
+	apps := []DockerApp{}
+	for _, app := range mm.WebApps {
+		apps = append(apps, app)
+	}
+	for _, app := range mm.WorkerApps {
+		apps = append(apps, app)
+	}
+	return apps
+}
+
 type Manifests []MachineManifest
 
 func (pm Manifests) Len() int           { return len(pm) }

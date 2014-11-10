@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var log, _ = logger.New("test", 1, os.Stdout)
+var log, _ = logger.New("main", 1, os.Stdout)
 
 func HandleError(err error) {
 	if err != nil {

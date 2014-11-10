@@ -15,7 +15,7 @@ func runStore() {
 }
 
 func main() {
-	logging.SetLevel(logging.DEBUG, "main")
+	logging.SetLevel(logging.INFO, "main")
 	settings.SetDiscoveryString("https://discovery.etcd.io/571c7c3a1d119ad5c75921c1d3d0a4a6")
 	runStore()
 	var c cluster.Cluster
