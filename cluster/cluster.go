@@ -3,13 +3,13 @@ package cluster
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/aryann/difflib"
 	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
 	"strings"
-	"fmt"
 )
 
 type DockerAppIter interface {
@@ -41,16 +41,15 @@ func (c Cluster) IterApps() []DockerApp {
 	return apps
 }
 
-func (c Cluster) GetEnv(envID string) Env{
-	for _, env := range c.Envs{
-		if env.ID == envID{
+func (c Cluster) GetEnv(envID string) Env {
+	for _, env := range c.Envs {
+		if env.ID == envID {
 			return env
 		}
 	}
 	utils.HandleError(errors.New(fmt.Sprintf("Error: Env %v not found in cluster.", envID)))
 	return Env{}
 }
-
 
 func (c Cluster) Validate() {
 	flattenCluster(c)

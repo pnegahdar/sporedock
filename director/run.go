@@ -6,8 +6,8 @@ import (
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
-	"time"
 	"sync"
+	"time"
 )
 
 func Direct() {

@@ -47,7 +47,6 @@ func CachedDockerClient() dockerclient.DockerClient {
 	return cachedDockerClient
 }
 
-
 func hasImage(imagelist []*dockerclient.Image, image, tag string) bool {
 	for _, im := range imagelist {
 		for _, ims := range im.RepoTags {
