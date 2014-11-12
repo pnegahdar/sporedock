@@ -43,10 +43,10 @@ func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 	envList := currentCluster.GetEnv(wa.Env).AsDockerSlice()
 	imageFull := fmt.Sprintf("%v:%v", wa.Image, wa.Tag)
 	exposedPorts := map[string]struct{}{}
-	exposedPorts["tcp/80"] = struct{}{}
+	exposedPorts["80/tcp"] = struct{}{}
 	return dockerclient.ContainerConfig{
-		Env:   envList,
-		Image: imageFull,
+		Env:          envList,
+		Image:        imageFull,
 		ExposedPorts: exposedPorts}
 }
 func (wa WebApp) GetImage() string {

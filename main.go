@@ -7,8 +7,8 @@ import (
 	"github.com/pnegahdar/sporedock/loadbalancer"
 	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/settings"
-	"time"
 	"runtime"
+	"time"
 )
 
 func runStore() {

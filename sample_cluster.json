@@ -19,15 +19,6 @@
   "WebApps": [
     {
       "Count": 5,
-      "ID": "DemoFlaskApp1",
-      "Image": "wordpress",
-      "Tag": "latest",
-      "Env": "Dev",
-      "WebEndpoints": ["test-web.flask.com"],
-      "Weight": 0.8
-    },
-    {
-      "Count": 5,
       "ID": "DemoFlaskApp2",
       "Image": "mongo",
       "Tag": "latest",

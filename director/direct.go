@@ -12,6 +12,7 @@ import (
 
 func Direct() {
 	lastCluster := cluster.Cluster{}
+	CleanDeadApps()
 	for {
 		time.Sleep(settings.RebuildDelayS * time.Second)
 		machine := discovery.CurrentMachine()
@@ -24,6 +25,7 @@ func Direct() {
 		ProcessMyManifest()
 	}
 }
+
 
 func PrepMyApps() {
 	utils.LogInfo("Syncing cluster.")
@@ -63,6 +65,6 @@ func ProcessMyManifest() {
 		waitGroup.Add(1)
 	}
 	waitGroup.Wait()
-	CleanupApps(appNames)
+	CleanupRemovedApps(appNames)
 	UpdateLocations(appNames)
 }

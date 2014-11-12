@@ -92,8 +92,9 @@ func RunAppSafe(app cluster.DockerApp, manifest cluster.MachineManifest, waitGro
 		return
 	}
 	if idAppExists != "" {
-		utils.LogDebug(fmt.Sprintf("App %v already exists. Removing.", app.GetName()))
-		dc.RemoveContainer(idAppExists, false)
+		utils.LogWarn(fmt.Sprintf("App %v already ran but exited. Not restarting.", app.GetName()))
+		waitGroup.Done()
+		return
 	}
 	id := createContainer(app)
 	runApp(app, id)
@@ -135,7 +136,7 @@ func In(haystack []string, needle string) bool {
 	return false
 }
 
-func CleanupApps(appsToKeep []string) {
+func CleanupRemovedApps(appsToKeep []string) {
 	dc := CachedDockerClient()
 	resp, err := dc.ListContainers(true)
 	utils.HandleError(err)
@@ -151,6 +152,11 @@ func CleanupApps(appsToKeep []string) {
 	}
 }
 
+func pathLastPart(path string) string {
+	allPaths := strings.Split(path, "/")
+	return allPaths[len(allPaths)-1]
+}
+
 // Removes all the locations for nodes in the cluster that no longer exist.
 func CleanupLocations() {
 	currentCluster := cluster.GetCurrentCluster()
@@ -159,16 +165,33 @@ func CleanupLocations() {
 	for _, machine := range currentManifest {
 		machineList = append(machineList, machine.Machine.Name)
 	}
+	// Remove APPS DNE
+	appNames := []string{}
+	for _, app := range currentCluster.IterApps() {
+		appNames = append(appNames, app.GetName())
+	}
+	resp, err := server.EtcdClient().Get(cluster.AppLocationsDirKey, true, false)
+	utils.HandleError(err)
+	for _, node := range resp.Node.Nodes {
+		appName := pathLastPart(node.Key)
+		if !In(appNames, appName) {
+			utils.LogDebug(fmt.Sprintf("App %v no longer exists removing loc.", appName))
+			_, err := server.EtcdClient().Delete(node.Key, true)
+			utils.HandleError(err)
+		}
+	}
+	// Remove Machines DNE
 	for _, app := range currentCluster.IterApps() {
 		keyName := cluster.AppLocationsDirKey + app.GetName() + "/"
 		resp, err := server.EtcdClient().Get(keyName, true, false)
 		if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
 			continue
 		}
-		fmt.Println(resp)
 		utils.HandleError(err)
 		for _, node := range resp.Node.Nodes {
-			if !In(machineList, node.Key) {
+			machineName := pathLastPart(node.Key)
+			if !In(machineList, machineName) {
+				utils.LogDebug(fmt.Sprintf("Machine %v no longer exists removing loc.", machineName))
 				_, err := server.EtcdClient().Delete(node.Key, true)
 				utils.HandleError(err)
 			}
@@ -181,18 +204,48 @@ func UpdateLocations(appNames []string) {
 	dc := CachedDockerClient()
 	machine := discovery.CurrentMachine()
 	for _, appName := range appNames {
+		keyName := cluster.AppLocationsDirKey + appName + "/" + machine.Name
 		resp, err := dc.InspectContainer(appName)
 		utils.HandleError(err)
-		bindings := resp.HostConfig.PortBindings
+		// Remove dead app
+		utils.LogDebug(fmt.Sprintf("App state %v %v", appName, resp.State))
+		if !resp.State.Running{
+			utils.LogDebug(fmt.Sprintf("Removing dead app %v", appName))
+			_, err := server.EtcdClient().Delete(keyName, true)
+			if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+				continue
+			}
+			utils.HandleError(err)
+			continue
+		}
+		bindings := resp.NetworkSettings.Ports
 		for k, v := range bindings {
 			if k == "80/tcp" {
 				//Todo(parham): Only allows for one per node
-				keyName := cluster.AppLocationsDirKey + appName + "/" + machine.Name
+
 				_, err := server.EtcdClient().Set(keyName, v[0].HostPort, 0)
 				utils.HandleError(err)
 			}
 		}
-
 	}
 
+}
+
+func CleanDeadApps(){
+	dc := CachedDockerClient()
+	resp, err := dc.ListContainers(true)
+	utils.HandleError(err)
+	for _, cont := range resp {
+		for _, name := range cont.Names {
+			if strings.HasPrefix(name, "Sporedock") {
+				resp, err := dc.InspectContainer(name)
+				utils.HandleError(err)
+				if !resp.State.Running{
+					utils.LogDebug(fmt.Sprintf("App %v looks dead removing.", name))
+					dc.RemoveContainer(name, true)
+				}
+			}
+		}
+
+	}
 }
