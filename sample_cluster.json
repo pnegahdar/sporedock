@@ -43,6 +43,7 @@
       "Env": "Dev",
       "WebEndpoints": ["test-web.flask.com"],
       "Weight": 0.8
+
     }
   ],
   "WorkerApps": [

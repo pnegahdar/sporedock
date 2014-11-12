@@ -5,3 +5,5 @@ const CurrentConfigKey = "/sporedock/config"
 
 const CurrentManifestKey = "/sporedock/manifest"
 const ManifestLogsKey = "/sporedock/manifests/"
+
+const AppLocationsDirKey = "/sporedock/locs/"

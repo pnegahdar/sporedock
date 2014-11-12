@@ -56,6 +56,12 @@ func (ms *Manifests) MyManifest(myMachine discovery.Machine) MachineManifest {
 	panic("machine not found.")
 }
 
+func GetCurrentManifest() Manifests {
+	manifest := Manifests{}
+	manifest.Pull()
+	return manifest
+}
+
 func BuildClusterManifest(cluster Cluster) Manifests {
 	return buildAppManifests(cluster.WebApps, cluster.WorkerApps)
 }

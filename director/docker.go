@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/discovery"
+	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -61,9 +63,10 @@ func hasImage(imagelist []*dockerclient.Image, image, tag string) bool {
 func pullApp(app cluster.DockerApp, wg *sync.WaitGroup) {
 	client := CachedDockerClient()
 	imgs, err := client.ListImages()
+	utils.HandleError(err)
 	image := app.GetImage()
 	tag := app.GetTag()
-	utils.HandleError(err)
+	// Todo(parham): notify on change here...
 	if !hasImage(imgs, image, tag) {
 		utils.LogDebug(fmt.Sprintf("Started pulling docker image %v:%v", image, tag))
 		err = client.PullImage(image, tag)
@@ -75,34 +78,121 @@ func pullApp(app cluster.DockerApp, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func hasApp(appId string, containers []dockerclient.Container) bool {
-	for _, cont := range containers {
+func RunAppSafe(app cluster.DockerApp, manifest cluster.MachineManifest, waitGroup *sync.WaitGroup) {
+	dc := CachedDockerClient()
+	containersAll, err := dc.ListContainers(true)
+	utils.HandleError(err)
+	containersRunning, err1 := dc.ListContainers(false)
+	utils.HandleError(err1)
+	idAppRunning := hasApp(app, containersRunning)
+	idAppExists := hasApp(app, containersAll)
+	if idAppRunning != "" {
+		utils.LogDebug(fmt.Sprintf("App %v already running. Skipping.", app.GetName()))
+		waitGroup.Done()
+		return
+	}
+	if idAppExists != "" {
+		utils.LogDebug(fmt.Sprintf("App %v already exists. Removing.", app.GetName()))
+		dc.RemoveContainer(idAppExists, false)
+	}
+	id := createContainer(app)
+	runApp(app, id)
+	waitGroup.Done()
+}
+func hasApp(app cluster.DockerApp, containerList []dockerclient.Container) string {
+	for _, cont := range containerList {
 		for _, name := range cont.Names {
-			if appId == name {
-				return true
+			if "/"+app.GetName() == name {
+				return cont.Id
 			}
+		}
+	}
+	return ""
+}
+
+func createContainer(app cluster.DockerApp) string {
+	utils.LogDebug(fmt.Sprintf("Creating container for %v.", app.GetName()))
+	client := CachedDockerClient()
+	config := app.ContainerConfig()
+	id, err := client.CreateContainer(&config, app.GetName())
+	utils.HandleError(err)
+	return id
+}
+
+func runApp(app cluster.DockerApp, containerID string) {
+	utils.LogDebug(fmt.Sprintf("Running app %v", app.GetName()))
+	client := CachedDockerClient()
+	hostConfig := app.HostConfig()
+	err := client.StartContainer(containerID, &hostConfig)
+	utils.HandleError(err)
+}
+func In(haystack []string, needle string) bool {
+	for _, hay := range haystack {
+		if hay == needle {
+			return true
 		}
 	}
 	return false
 }
 
-func runDocker(app cluster.DockerApp) {
-	client := CachedDockerClient()
-	config := app.ContainerConfig()
-	client.CreateContainer(&config, app.GetName())
+func CleanupApps(appsToKeep []string) {
+	dc := CachedDockerClient()
+	resp, err := dc.ListContainers(true)
+	utils.HandleError(err)
+	for _, cont := range resp {
+		for _, name := range cont.Names {
+			if strings.HasPrefix(name, "Sporedock") {
+				if !In(appsToKeep, name) {
+					dc.RemoveContainer(name, true)
+				}
+			}
+		}
+
+	}
 }
 
-func RunMyApps() {
-	client := CachedDockerClient()
-	containers, err := client.ListContainers(true)
-	utils.HandleError(err)
-	currentManifest := cluster.Manifests{}
-	currentManifest.Pull()
-	myManifest := currentManifest.MyManifest(discovery.CurrentMachine())
-	apps := myManifest.IterApps()
-	for _, app := range apps {
-		if !hasApp(app.GetImage(), containers) {
-			runDocker(app)
+// Removes all the locations for nodes in the cluster that no longer exist.
+func CleanupLocations() {
+	currentCluster := cluster.GetCurrentCluster()
+	currentManifest := cluster.GetCurrentManifest()
+	machineList := []string{}
+	for _, machine := range currentManifest {
+		machineList = append(machineList, machine.Machine.Name)
+	}
+	for _, app := range currentCluster.IterApps() {
+		keyName := cluster.AppLocationsDirKey + app.GetName() + "/"
+		resp, err := server.EtcdClient().Get(keyName, true, false)
+		if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+			continue
+		}
+		fmt.Println(resp)
+		utils.HandleError(err)
+		for _, node := range resp.Node.Nodes {
+			if !In(machineList, node.Key) {
+				_, err := server.EtcdClient().Delete(node.Key, true)
+				utils.HandleError(err)
+			}
 		}
 	}
+
+}
+
+func UpdateLocations(appNames []string) {
+	dc := CachedDockerClient()
+	machine := discovery.CurrentMachine()
+	for _, appName := range appNames {
+		resp, err := dc.InspectContainer(appName)
+		utils.HandleError(err)
+		bindings := resp.HostConfig.PortBindings
+		for k, v := range bindings {
+			if k == "80/tcp" {
+				//Todo(parham): Only allows for one per node
+				keyName := cluster.AppLocationsDirKey + appName + "/" + machine.Name
+				_, err := server.EtcdClient().Set(keyName, v[0].HostPort, 0)
+				utils.HandleError(err)
+			}
+		}
+
+	}
+
 }

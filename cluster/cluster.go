@@ -18,6 +18,7 @@ type DockerAppIter interface {
 
 type DockerApp interface {
 	ContainerConfig() dockerclient.ContainerConfig
+	HostConfig() dockerclient.HostConfig
 	GetImage() string
 	GetTag() string
 	GetName() string
@@ -105,4 +106,10 @@ func (c *Cluster) Pull() {
 	current_config, err := server.EtcdClient().Get(CurrentConfigKey, false, false)
 	utils.HandleError(err)
 	unmarshall(current_config.Node.Value, c)
+}
+
+func GetCurrentCluster() Cluster {
+	c := Cluster{}
+	c.Pull()
+	return c
 }

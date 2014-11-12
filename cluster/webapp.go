@@ -1,6 +1,9 @@
 package cluster
 
-import "github.com/samalba/dockerclient"
+import (
+	"fmt"
+	"github.com/samalba/dockerclient"
+)
 
 type WebApp struct {
 	Count        int      `flatten:"{{ .ID }}/Count"`
@@ -12,8 +15,39 @@ type WebApp struct {
 	Weight       float32  `flatten:"{{ .ID }}/Weight"`
 }
 
+func (wa WebApp) GetRestartPolicy() dockerclient.RestartPolicy {
+	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%vTag%v", wa.ID, wa.Image, wa.Tag)
+	restartPolicy := dockerclient.RestartPolicy{
+		Name:              policyName,
+		MaximumRetryCount: 5,
+	}
+	return restartPolicy
+}
+
+func (wa WebApp) HostConfig() dockerclient.HostConfig {
+	return dockerclient.HostConfig{
+		PortBindings:  wa.GetPortBindings(),
+		RestartPolicy: wa.GetRestartPolicy(),
+	}
+}
+
+func (wa WebApp) GetPortBindings() map[string][]dockerclient.PortBinding {
+	anyPort := dockerclient.PortBinding{HostPort: "0"}
+	bindings := map[string][]dockerclient.PortBinding{}
+	bindings["80/tcp"] = []dockerclient.PortBinding{anyPort}
+	return bindings
+}
+
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
-	return dockerclient.ContainerConfig{}
+	currentCluster := GetCurrentCluster()
+	envList := currentCluster.GetEnv(wa.Env).AsDockerSlice()
+	imageFull := fmt.Sprintf("%v:%v", wa.Image, wa.Tag)
+	exposedPorts := map[string]struct{}{}
+	exposedPorts["tcp/80"] = struct{}{}
+	return dockerclient.ContainerConfig{
+		Env:   envList,
+		Image: imageFull,
+		ExposedPorts: exposedPorts}
 }
 func (wa WebApp) GetImage() string {
 	return wa.Image
@@ -23,7 +57,7 @@ func (wa WebApp) GetTag() string {
 	return wa.Tag
 }
 func (wa WebApp) GetName() string {
-	return wa.ID
+	return fmt.Sprintf("Sporedock%v%v%v", wa.ID, wa.Image, wa.Tag)
 }
 
 type WebApps []WebApp

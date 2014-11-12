@@ -11,13 +11,15 @@ type WorkerApp struct {
 	Weight float32 `flatten:"{{ .ID }}/Weight"`
 }
 
+func (wa WorkerApp) HostConfig() dockerclient.HostConfig {
+	return dockerclient.HostConfig{}
+}
 func (wa WorkerApp) ContainerConfig() dockerclient.ContainerConfig {
 	return dockerclient.ContainerConfig{}
 }
 func (wa WorkerApp) GetImage() string {
 	return wa.Image
 }
-
 func (wa WorkerApp) GetTag() string {
 	return wa.Tag
 }
