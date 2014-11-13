@@ -113,7 +113,3 @@ func GetCurrentCluster() Cluster {
 	c.Pull()
 	return c
 }
-
-func Init() {
-
-}

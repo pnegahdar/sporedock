@@ -237,13 +237,14 @@ func CleanDeadApps() {
 	utils.HandleError(err)
 	for _, cont := range resp {
 		for _, name := range cont.Names {
-			utils.LogDebug(fmt.Sprintf("%v", name))
 			if strings.HasPrefix(name, "/Sporedock") {
 				resp, err := dc.InspectContainer(name)
 				utils.HandleError(err)
 				if !resp.State.Running {
 					utils.LogDebug(fmt.Sprintf("App %v looks dead removing.", name))
-					dc.RemoveContainer(name, true)
+					name = name[1:len(name)]
+					err := dc.RemoveContainer(name, true)
+					utils.HandleError(err)
 				}
 			}
 		}
