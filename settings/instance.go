@@ -35,11 +35,12 @@ func SetDiscoveryString(discovery string) {
 func getFileContentsString(path string) string {
 	fileData, err := ioutil.ReadFile(path)
 	if err != nil {
+		utils.LogWarn(err.Error())
 		return ""
 	}
 	return string(fileData[:])
 }
 func writeFileContentsString(path string, content string) {
-	err := ioutil.WriteFile(path, []byte(content), 700)
+	err := ioutil.WriteFile(path, []byte(content), 777)
 	utils.HandleError(err)
 }

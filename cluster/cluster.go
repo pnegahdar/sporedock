@@ -114,6 +114,6 @@ func GetCurrentCluster() Cluster {
 	return c
 }
 
-func Init(){
+func Init() {
 
 }

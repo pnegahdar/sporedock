@@ -3,6 +3,7 @@ package utils
 import (
 	logger "github.com/apsdehal/go-logger"
 	"os"
+	"runtime/debug"
 )
 
 var log, _ = logger.New("main", 1, os.Stdout)
@@ -10,6 +11,7 @@ var log, _ = logger.New("main", 1, os.Stdout)
 func HandleError(err error) {
 	if err != nil {
 		log.Error(err.Error())
+		debug.PrintStack()
 	}
 }
 

@@ -26,7 +26,6 @@ func Direct() {
 	}
 }
 
-
 func PrepMyApps() {
 	utils.LogInfo("Syncing cluster.")
 	currentCluster := cluster.GetCurrentCluster()

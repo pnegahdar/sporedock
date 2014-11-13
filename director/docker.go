@@ -142,7 +142,7 @@ func CleanupRemovedApps(appsToKeep []string) {
 	utils.HandleError(err)
 	for _, cont := range resp {
 		for _, name := range cont.Names {
-			if strings.HasPrefix(name, "Sporedock") {
+			if strings.HasPrefix(name, "/Sporedock") {
 				if !In(appsToKeep, name) {
 					dc.RemoveContainer(name, true)
 				}
@@ -171,6 +171,9 @@ func CleanupLocations() {
 		appNames = append(appNames, app.GetName())
 	}
 	resp, err := server.EtcdClient().Get(cluster.AppLocationsDirKey, true, false)
+	if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+		return
+	}
 	utils.HandleError(err)
 	for _, node := range resp.Node.Nodes {
 		appName := pathLastPart(node.Key)
@@ -208,13 +211,12 @@ func UpdateLocations(appNames []string) {
 		resp, err := dc.InspectContainer(appName)
 		utils.HandleError(err)
 		// Remove dead app
-		utils.LogDebug(fmt.Sprintf("App state %v %v", appName, resp.State))
-		if !resp.State.Running{
-			utils.LogDebug(fmt.Sprintf("Removing dead app %v", appName))
+		if !resp.State.Running {
 			_, err := server.EtcdClient().Delete(keyName, true)
 			if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
 				continue
 			}
+			utils.LogDebug(fmt.Sprintf("Removed dead app location %v", appName))
 			utils.HandleError(err)
 			continue
 		}
@@ -228,19 +230,18 @@ func UpdateLocations(appNames []string) {
 			}
 		}
 	}
-
 }
-
-func CleanDeadApps(){
+func CleanDeadApps() {
 	dc := CachedDockerClient()
 	resp, err := dc.ListContainers(true)
 	utils.HandleError(err)
 	for _, cont := range resp {
 		for _, name := range cont.Names {
-			if strings.HasPrefix(name, "Sporedock") {
+			utils.LogDebug(fmt.Sprintf("%v", name))
+			if strings.HasPrefix(name, "/Sporedock") {
 				resp, err := dc.InspectContainer(name)
 				utils.HandleError(err)
-				if !resp.State.Running{
+				if !resp.State.Running {
 					utils.LogDebug(fmt.Sprintf("App %v looks dead removing.", name))
 					dc.RemoveContainer(name, true)
 				}

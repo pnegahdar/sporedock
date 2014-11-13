@@ -19,7 +19,7 @@ func runStore() {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logging.SetLevel(logging.INFO, "main")
-	settings.SetDiscoveryString("https://discovery.etcd.io/571c7c3a1d119ad5c75921c1d3d0a4a6")
+	settings.SetDiscoveryString("https://discovery.etcd.io/33202b7b2834e8df416934024d7024d5")
 	runStore()
 	var c cluster.Cluster
 	c.Import("sample_cluster.json")
