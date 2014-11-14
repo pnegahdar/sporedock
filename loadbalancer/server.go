@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func GetRouterFromManifest() {
+func UpdateRouterFromManifest() {
 
 }
 
@@ -42,4 +42,8 @@ func Serve() {
 	}
 	err = server.ListenAndServe()
 	utils.HandleError(err)
+	for {
+		time.Sleep(time.Second * 5)
+		UpdateRouterFromManifest()
+	}
 }
