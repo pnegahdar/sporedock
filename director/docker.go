@@ -185,7 +185,7 @@ func CleanupLocations() {
 	}
 	// Remove Machines DNE
 	for _, app := range currentCluster.IterApps() {
-		keyName := cluster.AppLocationsDirKey + app.GetName() + "/"
+		keyName := cluster.GetAppLocationKey(app.GetName())
 		resp, err := server.EtcdClient().Get(keyName, true, false)
 		if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
 			continue
@@ -207,7 +207,7 @@ func UpdateLocations(appNames []string) {
 	dc := CachedDockerClient()
 	machine := discovery.CurrentMachine()
 	for _, appName := range appNames {
-		keyName := cluster.AppLocationsDirKey + appName + "/" + machine.Name
+		keyName := cluster.GetMachineAppLocationKey(appName, machine.Name)
 		resp, err := dc.InspectContainer(appName)
 		utils.HandleError(err)
 		// Remove dead app
@@ -224,8 +224,8 @@ func UpdateLocations(appNames []string) {
 		for k, v := range bindings {
 			if k == "80/tcp" {
 				//Todo(parham): Only allows for one per node
-
-				_, err := server.EtcdClient().Set(keyName, v[0].HostPort, 0)
+				location := machine.GetPortLocation(v[0].HostPort)
+				_, err := server.EtcdClient().Set(keyName, location, 0)
 				utils.HandleError(err)
 			}
 		}

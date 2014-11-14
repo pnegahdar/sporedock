@@ -2,7 +2,9 @@ package discovery
 
 import (
 	"errors"
+	"fmt"
 	"github.com/pnegahdar/sporedock/server"
+	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"strings"
 )
@@ -29,7 +31,7 @@ func ListMachines() []Machine {
 func CurrentMachine() Machine {
 	machines := ListMachines()
 	for _, v := range machines {
-		if strings.Index(v.ClientURL, "127.0.0.1") != -1 {
+		if strings.Index(v.Name, settings.GetInstanceName()) != -1 {
 			return v
 		}
 	}
@@ -50,4 +52,12 @@ func GetLeader() (Machine, error) {
 func AmLeader() bool {
 	me := CurrentMachine()
 	return me.State == "leader"
+}
+
+func (m Machine) GetIP() string {
+	return strings.Split(m.PeerURL, ":")[1]
+}
+
+func (m Machine) GetPortLocation(port string) string {
+	return fmt.Sprintf("http://%v:%v", m.GetIP(), port)
 }

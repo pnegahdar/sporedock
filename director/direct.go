@@ -3,6 +3,7 @@ package director
 import (
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/discovery"
+	"github.com/pnegahdar/sporedock/loadbalancer"
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"reflect"
@@ -11,6 +12,7 @@ import (
 )
 
 func Direct() {
+	go loadbalancer.Serve()
 	lastCluster := cluster.Cluster{}
 	CleanDeadApps()
 	for {

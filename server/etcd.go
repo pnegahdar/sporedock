@@ -57,3 +57,8 @@ func EtcdPeerClient() *etcdpeersclient.Client {
 	}
 	return etcdPeerClient
 }
+
+func RunAndWaitForEtcdServer() {
+	go EtcdServer().Run()
+	<-EtcdServer().ReadyNotify()
+}
