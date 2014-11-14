@@ -55,8 +55,7 @@ func WebServer(router *hostroute.HostRouter) {
 	utils.HandleError(err)
 }
 
-
-func Run(){
+func Run() {
 	router := hostroute.NewHostRouter()
 	go WebServer(router)
 	for {

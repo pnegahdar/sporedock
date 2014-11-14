@@ -7,6 +7,7 @@ import (
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"strings"
+	"net/url"
 )
 
 type Machine struct {
@@ -55,7 +56,9 @@ func AmLeader() bool {
 }
 
 func (m Machine) GetIP() string {
-	return strings.Split(m.PeerURL, ":")[1][2:]
+	u, err := url.Parse(m.PeerURL)
+	utils.HandleError(err)
+	return strings.Split(u.Host, ":")[0]
 }
 
 func (m Machine) GetPortLocation(port string) string {

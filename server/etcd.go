@@ -10,6 +10,7 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -28,7 +29,9 @@ func getDiscoveryPeers() []string {
 	utils.HandleError(err)
 	var peers []string
 	for _, v := range data.Node.Nodes {
-		peers = append(peers, "http:"+strings.Split(v.Value, ":")[1]+":4001")
+		parsedUrl, err := url.Parse(v.Value)
+		utils.HandleError(err)
+		peers = append(peers, "http://"+strings.Split(parsedUrl.Host, ":")[0]+":4001")
 	}
 	return peers
 }
