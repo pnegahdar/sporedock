@@ -12,7 +12,7 @@ import (
 )
 
 func Direct() {
-	go loadbalancer.Serve()
+	go loadbalancer.Run()
 	lastCluster := cluster.Cluster{}
 	CleanDeadApps()
 	for {

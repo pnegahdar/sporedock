@@ -55,7 +55,7 @@ func AmLeader() bool {
 }
 
 func (m Machine) GetIP() string {
-	return strings.Split(m.PeerURL, ":")[1]
+	return strings.Split(m.PeerURL, ":")[1][2:]
 }
 
 func (m Machine) GetPortLocation(port string) string {

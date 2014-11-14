@@ -18,7 +18,7 @@ import (
 
 func UpdateRoutes(currentRoute *hostroute.HostRouter) {
 	newHostRouter := hostroute.NewHostRouter()
-
+	utils.LogDebug("Updating routes.")
 	currentCluster := cluster.GetCurrentCluster()
 	for _, webapp := range currentCluster.WebApps {
 		rr, err := roundrobin.NewRoundRobin()
@@ -41,11 +41,9 @@ func UpdateRoutes(currentRoute *hostroute.HostRouter) {
 	}
 }
 
-func Serve() {
-	router := hostroute.NewHostRouter()
+func WebServer(router *hostroute.HostRouter) {
 	proxy, err := vulcan.NewProxy(router)
 	utils.HandleError(err)
-
 	server := &http.Server{
 		Addr:           "localhost:8200",
 		Handler:        proxy,
@@ -55,8 +53,15 @@ func Serve() {
 	}
 	err = server.ListenAndServe()
 	utils.HandleError(err)
+}
+
+
+func Run(){
+	router := hostroute.NewHostRouter()
+	go WebServer(router)
 	for {
 		time.Sleep(time.Second * 5)
 		UpdateRoutes(router)
 	}
+
 }
