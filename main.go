@@ -1,4 +1,4 @@
-package main
+package sporedock
 
 import (
 	logging "github.com/op/go-logging"

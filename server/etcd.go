@@ -2,21 +2,19 @@ package server
 
 import (
 	"encoding/json"
-	etcdserviceconfig "github.com/coreos/etcd/config"
-	etcdservice "github.com/coreos/etcd/etcd"
-	etcdpeersclient "github.com/coreos/etcd/server"
 	etcdclient "github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var etcdClient *etcdclient.Client
-var etcdServer *etcdservice.Etcd
-var etcdPeerClient *etcdpeersclient.Client
+var etcdServer *etcdserver.EtcdServer
 
 func getDiscoveryPeers() []string {
 	resp, err := http.Get(settings.GetDiscoveryString())
@@ -43,25 +41,30 @@ func EtcdClient() *etcdclient.Client {
 	return etcdClient
 
 }
-func EtcdServer() *etcdservice.Etcd {
+
+func EtcdServer() *etcdserver.EtcdServer {
 	if etcdServer == nil {
-		config := etcdserviceconfig.New()
-		config.Name = settings.GetInstanceName()
-		config.DataDir = settings.GetEtcdDataDir()
-		config.Discovery = settings.GetDiscoveryString()
-		etcdServer = etcdservice.New(config)
+		client, err := url.Parse("127.0.0.1:4001")
+		peer, err := url.Parse("127.0.0.1:7001")
+		utils.HandleError(err)
+		cfg := &etcdserver.ServerConfig{
+			Name:            settings.GetInstanceName(),
+			ClientURLs:      []url.URL{*client},
+			PeerURLs:        []url.URL{*peer},
+			DataDir:         settings.GetEtcdDataDir(),
+			DiscoveryURL:    settings.GetDiscoveryString(),
+		}
+		err = cfg.VerifyBootstrapConfig()
+		utils.HandleError(err)
+		var s *etcdserver.EtcdServer
+		s, err = etcdserver.NewServer(cfg)
+		utils.HandleError(err)
+		etcdServer = s
 	}
 	return etcdServer
 }
 
-func EtcdPeerClient() *etcdpeersclient.Client {
-	if etcdPeerClient == nil {
-		etcdPeerClient = etcdpeersclient.NewClient(&http.Transport{})
-	}
-	return etcdPeerClient
-}
-
 func RunAndWaitForEtcdServer() {
-	go EtcdServer().Run()
-	<-EtcdServer().ReadyNotify()
+	go EtcdServer().Start()
+	time.Sleep(time.Second * 5)
 }
