@@ -10,14 +10,7 @@ import (
 	"strings"
 )
 
-type Machine struct {
-	Name      string
-	State     string
-	ClientURL string
-	PeerURL   string
-}
-
-func getAPeerUrl(discoveryUrl string) string{
+func getAPeerUrl(discoveryUrl string) string {
 	server.EtcdClient().SyncCluster()
 	cluster := server.EtcdClient().GetCluster()
 	parsedCluster, err := url.Parse(cluster[0])
@@ -27,21 +20,21 @@ func getAPeerUrl(discoveryUrl string) string{
 	return peerUrl
 }
 
-func getMachinesFromPeerUrl(peerUrl string) []Machine{
+func getMachinesFromPeerUrl(peerUrl string) []Machine {
 	return []Machine{}
-//	resp, err := http.Get(peerUrl + "/v2/admin/machines")
-//	utils.HandleError(err)
-//	defer resp.Body.Close()
-//	body, err := ioutil.ReadAll(resp.Body)
-//	utils.HandleError(err)
-//	var data etcdclient.Response
-//	err = json.Unmarshal(body, &data)
-//	utils.HandleError(err)
-//	machines := []Machine{}
-//	for _, m := range resp {
-//		machines = append(machines, Machine{Name: m.Name, State: m.State, ClientURL: m.ClientURL, PeerURL: m.PeerURL})
-//	}
-//	return machines
+	//	resp, err := http.Get(peerUrl + "/v2/admin/machines")
+	//	utils.HandleError(err)
+	//	defer resp.Body.Close()
+	//	body, err := ioutil.ReadAll(resp.Body)
+	//	utils.HandleError(err)
+	//	var data etcdclient.Response
+	//	err = json.Unmarshal(body, &data)
+	//	utils.HandleError(err)
+	//	machines := []Machine{}
+	//	for _, m := range resp {
+	//		machines = append(machines, Machine{Name: m.Name, State: m.State, ClientURL: m.ClientURL, PeerURL: m.PeerURL})
+	//	}
+	//	return machines
 }
 
 func ListMachines() []Machine {

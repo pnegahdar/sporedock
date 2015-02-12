@@ -4,9 +4,17 @@ import (
 	logger "github.com/apsdehal/go-logger"
 	"os"
 	"runtime/debug"
+	"sync"
 )
 
 var log, _ = logger.New("main", 1, os.Stdout)
+
+func HandleErrorWG(err error, wg sync.WaitGroup) {
+	if error != nil {
+		wg.Done()
+		HandleError(err)
+	}
+}
 
 func HandleError(err error) {
 	if err != nil {

@@ -20,8 +20,8 @@ func GetDiscoveryConfPath() string {
 	return GetProjectPath("DISCOVERY")
 }
 
-func GetEtcdDataDir() string {
-	return GetProjectPath("etcd/")
+func GetRaftDataDir() string {
+	return GetProjectPath("raft/")
 }
 
 func init() {
