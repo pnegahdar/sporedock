@@ -6,26 +6,39 @@ import (
 	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/settings"
 	"github.com/pnegahdar/sporedock/utils"
-	"strings"
 	"net/url"
+	"strings"
 )
 
-type Machine struct {
-	Name      string
-	State     string
-	ClientURL string
-	PeerURL   string
+func getAPeerUrl(discoveryUrl string) string {
+	server.EtcdClient().SyncCluster()
+	cluster := server.EtcdClient().GetCluster()
+	parsedCluster, err := url.Parse(cluster[0])
+	utils.HandleError(err)
+	ip := strings.Split(parsedCluster.Host, ":")[0]
+	peerUrl := fmt.Sprintf("http://%v:7001", ip)
+	return peerUrl
+}
+
+func getMachinesFromPeerUrl(peerUrl string) []Machine {
+	return []Machine{}
+	//	resp, err := http.Get(peerUrl + "/v2/admin/machines")
+	//	utils.HandleError(err)
+	//	defer resp.Body.Close()
+	//	body, err := ioutil.ReadAll(resp.Body)
+	//	utils.HandleError(err)
+	//	var data etcdclient.Response
+	//	err = json.Unmarshal(body, &data)
+	//	utils.HandleError(err)
+	//	machines := []Machine{}
+	//	for _, m := range resp {
+	//		machines = append(machines, Machine{Name: m.Name, State: m.State, ClientURL: m.ClientURL, PeerURL: m.PeerURL})
+	//	}
+	//	return machines
 }
 
 func ListMachines() []Machine {
-	resp, err := server.EtcdPeerClient().GetMachines("http://127.0.0.1:7001")
-	if err != nil {
-		utils.HandleError(errors.New(err.Message))
-	}
-	machines := []Machine{}
-	for _, m := range resp {
-		machines = append(machines, Machine{Name: m.Name, State: m.State, ClientURL: m.ClientURL, PeerURL: m.PeerURL})
-	}
+	machines := getMachinesFromPeerUrl(getAPeerUrl(settings.GetDiscoveryString()))
 	return machines
 }
 

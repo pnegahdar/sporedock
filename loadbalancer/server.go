@@ -45,7 +45,7 @@ func WebServer(router *hostroute.HostRouter) {
 	proxy, err := vulcan.NewProxy(router)
 	utils.HandleError(err)
 	server := &http.Server{
-		Addr:           "localhost:8200",
+		Addr:           "localhost:8009",
 		Handler:        proxy,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
