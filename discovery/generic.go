@@ -30,6 +30,8 @@ type SporeStore interface {
 	GetLeader() Member
 	GetMe() Member
 	AmLeader() bool
+	SetKey(key, value string) error
+	GetKey(key string) (string, error)
 	Run(group string, myType MemberType, myIP net.IP)
 }
 

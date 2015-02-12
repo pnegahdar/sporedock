@@ -134,3 +134,20 @@ func (rs RedisStore) AmLeader() bool {
 	}
 	return false
 }
+
+func (rs RedisStore) SetKey(key, value string) error {
+	_, err := rs.connection.Do("GET", key)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rs RedisStore) GetKey(key string) (string, error) {
+	resp, err := rs.connection.Do("GET", key)
+	if err != nil {
+		return nil, err
+	} else {
+		return (resp).(string), err
+	}
+}
