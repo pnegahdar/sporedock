@@ -3,8 +3,8 @@ package cluster
 import "fmt"
 
 type Env struct {
-	Env map[string]string `flatten:"{{ .ID }}/{{ .KEY }}"`
-	ID  string            `flatten:"{{ .ID }}/"`
+	Env map[string]string
+	ID  string
 }
 
 type Envs []Env

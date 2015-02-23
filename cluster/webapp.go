@@ -6,13 +6,13 @@ import (
 )
 
 type WebApp struct {
-	Count        int      `flatten:"{{ .ID }}/Count"`
-	Env          string   `flatten:"{{ .ID }}/Env/"`
-	ID           string   `flatten:"{{ .ID }}"`
-	Image        string   `flatten:"{{ .ID }}/Image"`
-	Tag          string   `flatten:"{{ .ID }}/Tag"`
-	WebEndpoints []string `flatten:"{{ .ID }}/WebEndpoints/"` // Todo(parham) ensure uniqueness
-	Weight       float32  `flatten:"{{ .ID }}/Weight"`
+	Count        int
+	AttachedEnvs []*Env
+	ExtraEnv     map[string]string
+	Tags         map[string]string
+	ID           string
+	Image        string
+	WebEndpoints []string
 }
 
 func (wa WebApp) GetRestartPolicy() dockerclient.RestartPolicy {
@@ -53,9 +53,6 @@ func (wa WebApp) GetImage() string {
 	return wa.Image
 }
 
-func (wa WebApp) GetTag() string {
-	return wa.Tag
-}
 func (wa WebApp) GetName() string {
 	return fmt.Sprintf("Sporedock%v%v%v", wa.ID, wa.Image, wa.Tag)
 }

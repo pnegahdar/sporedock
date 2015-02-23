@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aryann/difflib"
-	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
@@ -20,15 +19,14 @@ type DockerApp interface {
 	ContainerConfig() dockerclient.ContainerConfig
 	HostConfig() dockerclient.HostConfig
 	GetImage() string
-	GetTag() string
 	GetName() string
 }
 
 type Cluster struct {
-	Envs       Envs       `flatten:"/sporedock/clusters/{{ .ID }}/Envs/"`
-	ID         string     `flatten:"/sporedock/clusters/{{ .ID }}/"`
-	WebApps    WebApps    `flatten:"/sporedock/cluster/{{ .ID }}/WebApps/"`
-	WorkerApps WorkerApps `flatten:"/sporedock/cluster/{{ .ID }}/WorkerApps/"`
+	Envs       Envs
+	ID         string
+	WebApps    WebApps
+	WorkerApps WorkerApps
 }
 
 func (c Cluster) IterApps() []DockerApp {

@@ -30,7 +30,7 @@ const OneExitedError = errors.New("One of hte proceses exited")
 const BadKeyError = errors.New("The key provided wasn't in the the right format")
 const BadIPError = errors.New("The IP failed to parse")
 
-func (rs RedisStore) lockKey() string {
+func (rs RedisStore) leaderKey() string {
 	return fmt.Sprintf("sporedock:leader:%v", rs.group)
 }
 
@@ -42,7 +42,7 @@ func (rs RedisStore) membersKey() string {
 	return fmt.Sprintf("sporedock:members:*", rs.group)
 }
 
-func (rs RedisStore) getMachineFromKey(key string) (Member, error) {
+func (rs RedisStore) getMachineFromKey(key string) (Spore, error) {
 	data := strings.Split(key, ":")
 	if len(data) != 5 {
 		return nil, BadKeyError
@@ -52,19 +52,25 @@ func (rs RedisStore) getMachineFromKey(key string) (Member, error) {
 	if memberIP == nil {
 		return nil, BadIPError
 	}
-	memberType := MemberType(data[4])
-	return Member{Group: group, MemberIP: memberIP, MemberType: memberType}, nil
+	memberType := SporeType(data[4])
+	return Spore{Group: group, MemberIP: memberIP, SporeType: memberType}, nil
 
 }
 
 func (rs RedisStore) runLeaderElection(wg sync.WaitGroup) {
-	lockKey := rs.lockKey()
+	checkinDur := time.Millisecond * LeadershipCheckinMs
+	leaderKey := rs.leaderKey()
 	myKey := rs.myKey()
-	resp, err := rs.connection.Do("SETNX", lockKey, myKey)
-	utils.HandleErrorWG(err, wg)
-	if resp.(int64) == 1 {
-		_, err := rs.connection.Do("PEXPIRE", lockKey, LeadershipExpireMs)
+	for {
+		reply, err := rs.connection.Do("SETNX", leaderKey, myKey)
 		utils.HandleErrorWG(err, wg)
+		resp, err := redis.Int(reply, nil)
+		utils.HandleError(err)
+		if resp == 1 {
+			_, err := rs.connection.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
+			utils.HandleErrorWG(err, wg)
+		}
+		time.Sleep(checkinDur)
 	}
 
 }
@@ -79,17 +85,18 @@ func (rs RedisStore) runCheckIn(wg sync.WaitGroup) {
 
 }
 
-func (rs RedisStore) Run(group string, myType MemberType, myIP net.IP) {
+func (rs RedisStore) Run(group string, myType SporeType, myIP net.IP) {
 	if rs.connectionString == nil {
 		utils.HandleError(ConnectionStringNotSetError)
 	}
+	// Todo: Connection pool
 	connection, err := redis.Dial("tcp", rs.connectionString)
 	utils.HandleError(err)
 	rs.group = group
 	rs.myIP = myIP
 	rs.myType = myType
 	rs.connection = connection
-	// Todo(parham): better proc management here
+	// Todo: better proc management here
 	// All or none WG Group
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -99,11 +106,13 @@ func (rs RedisStore) Run(group string, myType MemberType, myIP net.IP) {
 	utils.HandleError(OneExitedError)
 }
 
-func (rs RedisStore) ListMembers() []Member {
-	resp, err := rs.connection.Do("KEYS", rs.membersKey())
+func (rs RedisStore) ListMembers() []Spore {
+	reply, err := rs.connection.Do("KEYS", rs.membersKey())
 	utils.HandleError(err)
-	var members []Member
-	for _, key := range resp.([]string) {
+	var members []Spore
+	resp, err := redis.Strings(reply, nil)
+	utils.HandleError(err)
+	for _, key := range resp {
 		newMember, err := rs.getMachineFromKey(key)
 		utils.HandleError(err)
 		members = append(members, newMember)
@@ -111,18 +120,22 @@ func (rs RedisStore) ListMembers() []Member {
 	return members
 }
 
-func (rs RedisStore) GetLeader() Member {
-	resp, err := rs.connection.Do("GET", rs.lockKey())
+func (rs RedisStore) GetLeader() Spore {
+	reply, err := rs.connection.Do("GET", rs.leaderKey())
 	utils.HandleError(err)
-	member, err := rs.getMachineFromKey(resp.(string))
+	resp, err := redis.String(reply, nil)
+	utils.HandleError(err)
+	member, err := rs.getMachineFromKey(resp)
 	utils.HandleError(err)
 	return member
 }
 
-func (rs RedisStore) GetMe() Member {
-	resp, err := rs.connection.Do("GET", rs.myKey())
+func (rs RedisStore) GetMe() Spore {
+	reply, err := rs.connection.Do("GET", rs.myKey())
 	utils.HandleError(err)
-	machine, err := rs.getMachineFromKey(resp.(string))
+	resp, err := redis.String(reply, nil)
+	utils.HandleError(err)
+	machine, err := rs.getMachineFromKey(resp)
 	utils.HandleError(err)
 	return machine
 }
@@ -135,19 +148,44 @@ func (rs RedisStore) AmLeader() bool {
 	return false
 }
 
+func (rs RedisStore) GetKey(key string) (string, error) {
+	resp, err := rs.connection.Do("GET", key)
+	if err != nil {
+		return nil, err
+	} else {
+
+		return redis.String(resp, nil)
+	}
+}
+
 func (rs RedisStore) SetKey(key, value string) error {
-	_, err := rs.connection.Do("GET", key)
+	_, err := rs.connection.Do("SET", key, value)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (rs RedisStore) GetKey(key string) (string, error) {
-	resp, err := rs.connection.Do("GET", key)
+func (rs RedisStore) SetKeyWithLog(key, value string, logLength int) {
+	err := rs.SetKey(key, value)
+	utils.HandleError(err)
+	logKey := fmt.Sprintf("%v__log", key)
+	_, err = rs.connection.Do("LPUSH", logKey, value)
+	utils.HandleError(err)
+	_, err = rs.connection.Do("LTRIM", key, 0, logLength)
+	utils.HandleError(err)
+}
+
+func (rs RedisStore) Save(to_save Serializable) error {
+	err := rs.SetKey(to_save.SerialKey(), to_save.Serialize())
+	return err
+}
+
+func (rs RedisStore) Load(load_into Serializable) (*Serializable, error) {
+	data, err := rs.GetKey(load_into.SerialKey())
 	if err != nil {
-		return nil, err
-	} else {
-		return (resp).(string), err
+		return nil, error
 	}
+	ret_val, err := load_into.Deserialize(data)
+	return ret_val, error
 }

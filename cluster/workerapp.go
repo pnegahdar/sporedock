@@ -15,6 +15,7 @@ func (wa WorkerApp) HostConfig() dockerclient.HostConfig {
 	return dockerclient.HostConfig{}
 }
 func (wa WorkerApp) ContainerConfig() dockerclient.ContainerConfig {
+	// Todo: finish
 	return dockerclient.ContainerConfig{}
 }
 func (wa WorkerApp) GetImage() string {
