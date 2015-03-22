@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aryann/difflib"
+	"github.com/coreos/etcd/discovery"
+	"github.com/pnegahdar/sporedock/discovery"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
 	"strings"
-	"github.com/pnegahdar/sporedock/discovery"
-	"github.com/coreos/etcd/discovery")
-
+)
 
 const clusterLogLength = 100
 const clusterconfigKey = "sporedock:cluster:current"
