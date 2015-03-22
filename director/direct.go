@@ -12,14 +12,15 @@ import (
 )
 
 func Direct() {
+	// Todo improve this significantly
+	sporeStore := discovery.GetStore()
 	go loadbalancer.Run()
 	lastCluster := cluster.Cluster{}
 	CleanDeadApps()
 	for {
 		time.Sleep(settings.RebuildDelayS * time.Second)
-		machine := discovery.CurrentMachine()
 		PrepMyApps()
-		if machine.State == "leader" {
+		if sporeStore.AmLeader() == "leader" {
 			lastCluster = DistributeWork(lastCluster)
 			CleanupLocations()
 
@@ -54,8 +55,9 @@ func DistributeWork(lastCluster cluster.Cluster) cluster.Cluster {
 }
 
 func ProcessMyManifest() {
+	sporeStore := discovery.GetStore()
 	currentManifest := cluster.GetCurrentManifest()
-	myManifest := currentManifest.MyManifest(discovery.CurrentMachine())
+	myManifest := currentManifest.MyManifest(sporeStore.GetMe())
 	apps := myManifest.IterApps()
 
 	waitGroup := sync.WaitGroup{}

@@ -1,6 +1,8 @@
 package cluster
 
-import "github.com/samalba/dockerclient"
+import (
+	"github.com/samalba/dockerclient"
+	)
 
 type WorkerApp struct {
 	Count  int     `flatten:"{{ .ID }}/Count"`

@@ -2,11 +2,14 @@ package discovery
 
 import (
 	"errors"
+	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"strings"
 )
 
 type SporeType int
+
+var CurrentStore SporeStore
 
 const (
 	TypeSporeLeader SporeType = iota
@@ -14,8 +17,8 @@ const (
 	TypeSporeWatcher
 )
 
-const ConnectionStringError = errors.New("Connection string must start with redis://")
-const ConnectionStringNotSetError = errors.New("Connection string not set.")
+var ConnectionStringError = errors.New("Connection string must start with redis://")
+var ConnectionStringNotSetError = errors.New("Connection string not set.")
 
 type Spore struct {
 	Group      string
@@ -44,11 +47,15 @@ type SporeStore interface {
 	Run(group string, myType SporeType, myIP net.IP)
 }
 
-func GetorCreateStore(connectionString string) (*SporeStore, error) {
+func GetStore() SporeStore {
 	// Return redis store
+	if CurrentStore != nil {
+		return CurrentStore, nil
+	}
 	if strings.HasPrefix(connectionString, "redis://") {
 		return &RedisStore{connectionString}
 	} else {
-		return nil, ConnectionStringError
+		utils.HandleError(ConnectionStringError)
+		return nil
 	}
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type MachineManifest struct {
-	Spore       discovery.Machine
+	Spore       discovery.Spore
 	WebApps     WebApps
 	WorkerApps  WorkerApps
 	TotalWeight float32

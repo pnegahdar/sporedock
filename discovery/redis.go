@@ -52,6 +52,7 @@ func (rs RedisStore) getMachineFromKey(key string) (Spore, error) {
 	if memberIP == nil {
 		return nil, BadIPError
 	}
+	// Todo will this enum casting work?
 	memberType := SporeType(data[4])
 	return Spore{Group: group, MemberIP: memberIP, SporeType: memberType}, nil
 

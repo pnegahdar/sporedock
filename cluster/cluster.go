@@ -9,7 +9,12 @@ import (
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
 	"strings"
-)
+	"github.com/pnegahdar/sporedock/discovery"
+	"github.com/coreos/etcd/discovery")
+
+
+const clusterLogLength = 100
+const clusterconfigKey = "sporedock:cluster:current"
 
 type DockerAppIter interface {
 	IterApps() []DockerApp
@@ -91,19 +96,19 @@ func (c *Cluster) Import(filepath string) {
 }
 
 func (c Cluster) Push() {
+	store := discovery.GetStore()
 	c.Validate()
 	cluster_json, err := marshall(c)
 	utils.HandleError(err)
-	_, err1 := server.EtcdClient().CreateInOrder(ConfigsLogKey, cluster_json, 0)
-	utils.HandleError(err1)
-	_, err2 := server.EtcdClient().Set(CurrentConfigKey, cluster_json, 0)
-	utils.HandleError(err2)
+	err = store.SetKeyWithLog(clusterconfigKey, cluster_json, clusterLogLength)
+	utils.HandleError(err)
 }
 
 func (c *Cluster) Pull() {
-	current_config, err := server.EtcdClient().Get(CurrentConfigKey, false, false)
+	store := discovery.GetStore()
+	resp, err := store.GetKey(clusterconfigKey)
 	utils.HandleError(err)
-	unmarshall(current_config.Node.Value, c)
+	unmarshall(resp, c)
 }
 
 func GetCurrentCluster() Cluster {
