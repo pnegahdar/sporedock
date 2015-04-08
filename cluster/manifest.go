@@ -9,7 +9,7 @@ import (
 )
 
 type MachineManifest struct {
-	Spore       discovery.Spore
+	Spore       store.Spore
 	WebApps     WebApps
 	WorkerApps  WorkerApps
 	TotalWeight float32
@@ -47,7 +47,7 @@ func (ms *Manifests) Pull() {
 	unmarshall(etcd_resp.Node.Value, ms)
 }
 
-func (ms *Manifests) MyManifest(myMachine discovery.Machine) MachineManifest {
+func (ms *Manifests) MyManifest(myMachine store.Machine) MachineManifest {
 	for _, v := range *ms {
 		if v.Machine == myMachine {
 			return v
@@ -71,7 +71,7 @@ func buildAppManifests(webapps WebApps, workerapps WorkerApps) Manifests {
 
 	copy(webappsCopy, webapps)
 	copy(workerappsCopy, workerapps)
-	machines := discovery.ListMachines()
+	machines := store.ListMachines()
 	sort.Sort(webapps)
 	sort.Sort(workerapps)
 	var manifests Manifests

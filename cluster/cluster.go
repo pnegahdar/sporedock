@@ -20,18 +20,15 @@ type DockerAppIter interface {
 	IterApps() []DockerApp
 }
 
-type DockerApp interface {
-	ContainerConfig() dockerclient.ContainerConfig
-	HostConfig() dockerclient.HostConfig
-	GetImage() string
-	GetName() string
-}
-
 type Cluster struct {
 	Envs       Envs
 	ID         string
 	WebApps    WebApps
 	WorkerApps WorkerApps
+}
+
+type Cluster struct {
+	Envs Envs
 }
 
 func (c Cluster) IterApps() []DockerApp {
@@ -96,7 +93,7 @@ func (c *Cluster) Import(filepath string) {
 }
 
 func (c Cluster) Push() {
-	store := discovery.GetStore()
+	store := store.GetStore()
 	c.Validate()
 	cluster_json, err := marshall(c)
 	utils.HandleError(err)
@@ -105,7 +102,7 @@ func (c Cluster) Push() {
 }
 
 func (c *Cluster) Pull() {
-	store := discovery.GetStore()
+	store := store.GetStore()
 	resp, err := store.GetKey(clusterconfigKey)
 	utils.HandleError(err)
 	unmarshall(resp, c)

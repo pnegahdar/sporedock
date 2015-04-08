@@ -1,4 +1,4 @@
-package discovery
+package store
 
 import (
 	"errors"
@@ -26,9 +26,9 @@ const CheckinExpireMs = 3000
 const LeadershipCheckinMs = 3000
 const LeadershipExpireMs = 5000
 
-const OneExitedError = errors.New("One of hte proceses exited")
-const BadKeyError = errors.New("The key provided wasn't in the the right format")
-const BadIPError = errors.New("The IP failed to parse")
+var OneExitedError = errors.New("One of hte proceses exited")
+var BadKeyError = errors.New("The key provided wasn't in the the right format")
+var BadIPError = errors.New("The IP failed to parse")
 
 func (rs RedisStore) leaderKey() string {
 	return fmt.Sprintf("sporedock:leader:%v", rs.group)
@@ -177,12 +177,12 @@ func (rs RedisStore) SetKeyWithLog(key, value string, logLength int) {
 	utils.HandleError(err)
 }
 
-func (rs RedisStore) Save(to_save Serializable) error {
+func (rs RedisStore) Save(to_save Storable) error {
 	err := rs.SetKey(to_save.SerialKey(), to_save.Serialize())
 	return err
 }
 
-func (rs RedisStore) Load(load_into Serializable) (*Serializable, error) {
+func (rs RedisStore) Load(load_into Storable) (*Storable, error) {
 	data, err := rs.GetKey(load_into.SerialKey())
 	if err != nil {
 		return nil, error

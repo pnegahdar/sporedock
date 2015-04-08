@@ -13,7 +13,7 @@ import (
 
 func Direct() {
 	// Todo improve this significantly
-	sporeStore := discovery.GetStore()
+	sporeStore := store.GetStore()
 	go loadbalancer.Run()
 	lastCluster := cluster.Cluster{}
 	CleanDeadApps()
@@ -55,7 +55,7 @@ func DistributeWork(lastCluster cluster.Cluster) cluster.Cluster {
 }
 
 func ProcessMyManifest() {
-	sporeStore := discovery.GetStore()
+	sporeStore := store.GetStore()
 	currentManifest := cluster.GetCurrentManifest()
 	myManifest := currentManifest.MyManifest(sporeStore.GetMe())
 	apps := myManifest.IterApps()

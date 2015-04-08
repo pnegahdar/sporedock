@@ -67,19 +67,3 @@ func flattenCluster(cluster Cluster) map[string]string {
 	flatten("", val, data)
 	return data
 }
-
-func marshall(i interface{}) (string, error) {
-	resp, err := json.Marshal(i)
-	if err != nil {
-		return "", err
-	}
-	return string(resp[:]), nil
-}
-
-func unmarshall(data string, i interface{}) error {
-	err := json.Unmarshal([]byte(data), i)
-	if err != nil {
-		return err
-	}
-	return nil
-}

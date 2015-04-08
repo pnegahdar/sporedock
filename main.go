@@ -12,7 +12,7 @@ import (
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logging.SetLevel(logging.INFO, "main")
-	settings.SetDiscoveryString("https://discovery.etcd.io/185a024ca8fc54d755680a2ffba5e183")
+	settings.SetDiscoveryString("https://store.etcd.io/185a024ca8fc54d755680a2ffba5e183")
 	server.RunAndWaitForEtcdServer()
 	var c cluster.Cluster
 	c.Import("sample_cluster.json")

@@ -187,7 +187,7 @@ func CleanupLocations() {
 	for _, app := range currentCluster.IterApps() {
 		appNames = append(appNames, app.GetName())
 	}
-	store := discovery.GetStore()
+	store := store.GetStore()
 	resp, err := store.GetKey(AppLocationsKey)
 	utils.HandleError(err)
 	if resp == "" {
@@ -224,7 +224,7 @@ func CleanupLocations() {
 
 func UpdateLocations(appNames []string) {
 	dc := CachedDockerClient()
-	store := discovery.GetStore()
+	store := store.GetStore()
 	mySpore := store.GetMe()
 	locations := cluster.GetCurrentLBSet()
 	for _, appName := range appNames {

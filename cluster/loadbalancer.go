@@ -13,13 +13,13 @@ type LoadBalancerLocations map[string]WebApp
 func (lbl LoadBalancerLocations) Push() {
 	data_json, err := marshall(lbl)
 	utils.HandleError(err)
-	store := discovery.GetStore()
+	store := store.GetStore()
 	err = store.SetKeyWithLog(loadBalancerLocationsKey, data_json, loadBalancerLocationsLogLength)
 	utils.HandleError(err)
 }
 
 func (lbl *LoadBalancerLocations) Pull() {
-	store := discovery.GetStore()
+	store := store.GetStore()
 	resp, err := store.GetKey(loadBalancerLocationsKey)
 	utils.HandleError(err)
 	unmarshall(resp, lbl)

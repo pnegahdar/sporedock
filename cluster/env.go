@@ -16,3 +16,7 @@ func (e Env) AsDockerSlice() []string {
 	}
 	return data
 }
+
+func (e Env) StoreKey() string{
+    return fmt.Sprintf("env:")
+}
