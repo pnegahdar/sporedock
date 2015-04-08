@@ -25,36 +25,36 @@ type Spore struct {
 	Name       string
 	MemberIP   string
 	MemberType SporeType
-    Tags       map[string]string
+	Tags       map[string]string
 }
 
-func (s Spore) TypeIdentifier() string{
-    return "spore"
+func (s Spore) TypeIdentifier() string {
+	return "spore"
 }
 
-func (s Spore) MyIdentifier() string{
-    return s.Name
+func (s Spore) MyIdentifier() string {
+	return s.Name
 }
 
-func (s Spore) ToString() string{
-    return utils.Marshall(s)
+func (s Spore) ToString() string {
+	return utils.Marshall(s)
 }
 
 func (s Spore) validate() error {
-   return nil
+	return nil
 }
 
 func (s *Spore) FromString(data string) (*Storable, error) {
-    utils.Unmarshall(data,s)
-    err := s.validate()
-    return s, err
+	utils.Unmarshall(data, s)
+	err := s.validate()
+	return s, err
 }
 
 type Storable interface {
-    TypeIdentifier() string
-    MyIdentifer() string
-    ToString() string
-    FromString(data string) (Storable, error)
+	TypeIdentifier() string
+	MyIdentifer() string
+	ToString() string
+	FromString(data string) (Storable, error)
 }
 
 // Todo (parham): Key locking with with some sort of watch interface
@@ -62,14 +62,14 @@ type SporeStore interface {
 	ListMembers() []Spore
 	GetLeader() Spore
 	GetMe() Spore
-    GetGroupName() string
+	GetGroupName() string
 	AmLeader() bool
 	GetAll(Storable) []Storable
-    Set(item Storable)
-    SetLog(item Storable, logLength int) error
-    Get(item Storable) Storable
-    GetLog(item Storable, limit int) []Storable
-    Delete(item Storable)
+	Set(item Storable)
+	SetLog(item Storable, logLength int) error
+	Get(item Storable) Storable
+	GetLog(item Storable, limit int) []Storable
+	Delete(item Storable)
 	Run(group string, myType SporeType, myIP net.IP)
 }
 
