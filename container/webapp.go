@@ -1,1 +1,83 @@
 package container
+
+import (
+    "fmt"
+    "github.com/samalba/dockerclient"
+    "github.com/pnegahdar/sporedock/cluster"
+    "github.com/pnegahdar/sporedock/store"
+    "github.com/pnegahdar/sporedock/utils"
+)
+
+type WebApp struct {
+    Count        int
+    AttachedEnvs []string
+    ExtraEnv     map[string]string
+    Tags         map[string]string
+    ID           string
+    Image        string
+    WebEndpoints []string
+}
+
+func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
+    policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.Image)
+    restartPolicy := dockerclient.RestartPolicy{
+        Name:              policyName,
+        MaximumRetryCount: 5,
+    }
+    return restartPolicy
+}
+
+func (wa WebApp) HostConfig() dockerclient.HostConfig {
+    return dockerclient.HostConfig{
+        PortBindings:  wa.PortBindings(),
+        RestartPolicy: wa.RestartPolicy(),
+    }
+}
+
+func (wa WebApp) PortBindings() map[string][]dockerclient.PortBinding {
+    anyPort := dockerclient.PortBinding{HostPort: "0"}
+    bindings := map[string][]dockerclient.PortBinding{}
+    bindings["80/tcp"] = []dockerclient.PortBinding{anyPort}
+    return bindings
+}
+
+func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
+    envList := []cluster.Env
+    for _, env := range (wa.AttachedEnvs) {
+        envList = append(envList, cluster.FindEnv(env))
+    }
+    envs := cluster.FlattenEnvs(envList...)
+    envsForDocker := cluster.EnvAsDockerKV(envs)
+    exposedPorts := map[string]struct {}{}
+    exposedPorts["80/tcp"] = struct {}{}
+    return dockerclient.ContainerConfig{
+        Env:          envsForDocker,
+        Image:        wa.Image,
+        ExposedPorts: exposedPorts}
+}
+func (wa WebApp) Image() string {
+    return wa.Image
+}
+
+func (wa WebApp) MyIdentifier() string {
+    return fmt.Sprintf("%v%v", wa.ID, wa.Image)
+}
+
+func (wa WebApp) TypeIdentifier() string {
+    return "webapp"
+}
+
+func (wa WebApp) ToString() string {
+    return utils.Marshall(wa)
+}
+
+func (wa WebApp) validate() error {
+    return nil
+}
+
+func (wa *WebApp) FromString(data string) (*store.Storable, error) {
+    utils.Unmarshall(data, wa)
+    err := wa.validate()
+    return wa, err
+}
+

@@ -3,6 +3,7 @@ package cluster
 import (
 	"github.com/pnegahdar/sporedock/discovery"
 	"github.com/pnegahdar/sporedock/utils"
+    "github.com/pnegahdar/sporedock/container"
 )
 
 const loadBalancerLocationsKey = "sporedock:loadbalancer:locations"
@@ -30,3 +31,5 @@ func GetCurrentLBSet() Cluster {
 	lb.Pull()
 	return lb
 }
+
+func AddRoute(app container.WebApp, )

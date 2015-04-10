@@ -52,7 +52,7 @@ func (s *Spore) FromString(data string) (*Storable, error) {
 
 type Storable interface {
 	TypeIdentifier() string
-	MyIdentifer() string
+	MyIdentifier() string
 	ToString() string
 	FromString(data string) (Storable, error)
 }
