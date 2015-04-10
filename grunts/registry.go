@@ -26,7 +26,7 @@ type GruntRegistry struct {
     runCount map[string]int
 }
 
-func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
+func (gr GruntRegistry) registerGrunts(grunts ...Grunt) {
     gr.Grunts = make(map[string]Grunt)
     gr.runCount = make(map[string]int)
     // Todo: check should run
