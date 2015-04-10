@@ -26,7 +26,7 @@ type GruntRegistry struct {
     runCount map[string]int
 }
 
-func (gr GruntRegistry) registerGrunts(grunts ...Grunt) {
+func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
     gr.Grunts = make(map[string]Grunt)
     gr.runCount = make(map[string]int)
     // Todo: check should run
@@ -40,16 +40,13 @@ func (gr GruntRegistry) registerGrunts(grunts ...Grunt) {
 
 }
 
-func (gr GruntRegistry) runGrunt(startMe chan string, gruntName string) {
+func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
     grunt, exists := gr.Grunts[gruntName]
     if !exists {
         utils.LogWarn(fmt.Sprintf("Grunt %v DNE %v", gruntName, grunt))
         return
     }
-    runCount, exists := gr.runCount[gruntName]
-    if !exists {
-        runCount = 0
-    }
+    runCount := gr.runCount[gruntName]
     delayTot := RestartDelaySeconds * runCount
     gr.runCount[gruntName] = runCount + 1
     utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
@@ -71,14 +68,14 @@ func (gr GruntRegistry) runGrunt(startMe chan string, gruntName string) {
     }()
 }
 
-func (gr GruntRegistry) run(startMe chan string) {
+func (gr *GruntRegistry) run(startMe chan string) {
     utils.LogInfo("Runner started.")
     for gruntToStart := range (startMe) {
         go gr.runGrunt(startMe, gruntToStart)
     }
 }
 
-func (gr GruntRegistry) Start(grunts ...Grunt) {
+func (gr *GruntRegistry) Start(grunts ...Grunt) {
     gr.registerGrunts(grunts...)
     startMe := make(chan string, len(grunts))
     go gr.run(startMe)
