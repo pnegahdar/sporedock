@@ -6,5 +6,6 @@ type ContainerApp interface {
 	ContainerConfig() dockerclient.ContainerConfig
 	HostConfig() dockerclient.HostConfig
 	Image() string
-	MyIdentifier() string
+    Env() map[string]string
+	Identifier() string
 }

@@ -32,7 +32,7 @@ func (s Spore) TypeIdentifier() string {
 	return "spore"
 }
 
-func (s Spore) MyIdentifier() string {
+func (s Spore) Identifier() string {
 	return s.Name
 }
 
@@ -52,7 +52,7 @@ func (s *Spore) FromString(data string) (*Storable, error) {
 
 type Storable interface {
 	TypeIdentifier() string
-	MyIdentifier() string
+	Identifier() string
 	ToString() string
 	FromString(data string) (Storable, error)
 }
@@ -64,7 +64,7 @@ type SporeStore interface {
 	GetMe() Spore
 	GetGroupName() string
 	AmLeader() bool
-	GetAll(Storable) []Storable
+	GetAll(retType Storable) []Storable
 	Set(item Storable)
 	SetLog(item Storable, logLength int) error
 	Get(item Storable) Storable

@@ -9,13 +9,35 @@ import (
 )
 
 type MachineManifest struct {
-	Spore       store.Spore
-	WebApps     WebApps
-	WorkerApps  WorkerApps
-	TotalWeight float32
+	Spore       string
+	WebApps     string
+	WorkerApps  string
 }
 
-type Manifest struct {
+func (mm MachineManifest) Image() string {
+    return mm.Image
+}
+
+func (mm MachineManifest) Identifier() string {
+    return mm.Spore
+}
+
+func (mm MachineManifest) TypeIdentifier() string {
+    return "machineManifest"
+}
+
+func (mm MachineManifest) ToString() string {
+    return utils.Marshall(mm)
+}
+
+func (mm MachineManifest) validate() error {
+    return nil
+}
+
+func (wa *WebApp) FromString(data string) (*store.Storable, error) {
+    utils.Unmarshall(data, wa)
+    err := wa.validate()
+    return wa, err
 }
 
 func (mm MachineManifest) IterApps() []DockerApp {

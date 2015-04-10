@@ -43,6 +43,7 @@ func FindEnv(name string) Env {
     // TODO
     return Env
 }
+
 func EnvAsDockerKV(envVars map[string]string) []string {
     data := []string{}
     for k, v := range envVars {
@@ -51,11 +52,3 @@ func EnvAsDockerKV(envVars map[string]string) []string {
     return data
 }
 
-func FlattenEnvs(envs ...Env) map[string]string {
-    finalMap := map[string]string{}
-    for _, env := range (envs) {
-        for k, v := range (env.Env) {
-            finalMap[k] = v
-        }
-    }
-}
