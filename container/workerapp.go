@@ -1,38 +1,64 @@
 package container
 
 import (
-	"github.com/samalba/dockerclient"
+    "github.com/samalba/dockerclient"
+    "github.com/pnegahdar/sporedock/cluster"
+    "github.com/pnegahdar/sporedock/utils"
+    "github.com/pnegahdar/sporedock/store"
 )
 
 type WorkerApp struct {
-	Count  int     `flatten:"{{ .ID }}/Count"`
-	Env    string  `flatten:"{{ .ID }}/Env/"`
-	ID     string  `flatten:"{{ .ID }}"`
-	Image  string  `flatten:"{{ .ID }}/Image"`
-	Tag    string  `flatten:"{{ .ID }}/Tag"`
-	Weight float32 `flatten:"{{ .ID }}/Weight"`
+    Count  int
+    AttachedEnvs    []string
+    ExtraEnv map[string]string
+    Tags   map[string]string
+    ID     string
+    Image  string
+    Weight float32
 }
 
 func (wa WorkerApp) HostConfig() dockerclient.HostConfig {
-	return dockerclient.HostConfig{}
+    return dockerclient.HostConfig{}
 }
 func (wa WorkerApp) ContainerConfig() dockerclient.ContainerConfig {
-	// Todo: finish
-	return dockerclient.ContainerConfig{}
-}
-func (wa WorkerApp) GetImage() string {
-	return wa.Image
-}
-func (wa WorkerApp) GetTag() string {
-	return wa.Tag
-}
-func (wa WorkerApp) GetName() string {
-	return wa.ID
+    envsForDocker := cluster.EnvAsDockerKV(wa.Env())
+    return dockerclient.ContainerConfig{
+        Env: envsForDocker,
+        Image: wa.Image,
+    }
 }
 
-type WorkerApps []WorkerApp
+func (wa WorkerApp) Env() map[string]string {
+    envList := []map[string]string{}
+    for _, env := range (wa.AttachedEnvs) {
+        envList = append(envList, cluster.FindEnv(env).Env)
+    }
+    return utils.FlattenHashes(wa.ExtraEnv, envList...)
+}
 
-// Define the interface for sorting
-func (wa WorkerApps) Len() int           { return len(wa) }
-func (wa WorkerApps) Swap(i, j int)      { wa[i], wa[j] = wa[j], wa[i] }
-func (wa WorkerApps) Less(i, j int) bool { return wa[i].Weight < wa[j].Weight }
+func (wa WorkerApp) Image() string {
+    return wa.Image
+}
+
+func (wa WorkerApp) Identifier() string {
+    return wa.ID
+}
+
+func (wa WorkerApp) TypeIdentifier() string {
+    return "workerapp"
+}
+
+func (wa WorkerApp) ToString() string {
+    return utils.Marshall(wa)
+}
+
+func (wa WorkerApp) validate() error {
+    return nil
+}
+
+func (wa *WorkerApp) FromString(data string) (*store.Storable, error) {
+    utils.Unmarshall(data, wa)
+    err := wa.validate()
+    return wa, err
+}
+

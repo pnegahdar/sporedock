@@ -16,6 +16,7 @@ type WebApp struct {
     ID           string
     Image        string
     Weight       float32
+    BalancedTCPPort int
 }
 
 func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
@@ -37,9 +38,10 @@ func (wa WebApp) HostConfig() dockerclient.HostConfig {
 func (wa WebApp) PortBindings() map[string][]dockerclient.PortBinding {
     anyPort := dockerclient.PortBinding{HostPort: "0"}
     bindings := map[string][]dockerclient.PortBinding{}
-    bindings["80/tcp"] = []dockerclient.PortBinding{anyPort}
+    bindings[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = []dockerclient.PortBinding{anyPort}
     return bindings
 }
+
 func (wa WebApp) Env() map[string]string {
     envList := []map[string]string{}
     for _, env := range (wa.AttachedEnvs) {
@@ -51,7 +53,7 @@ func (wa WebApp) Env() map[string]string {
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
     envsForDocker := cluster.EnvAsDockerKV(wa.Env())
     exposedPorts := map[string]struct {}{}
-    exposedPorts["80/tcp"] = struct {}{}
+    exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct {}{}
     return dockerclient.ContainerConfig{
         Env:          envsForDocker,
         Image:        wa.Image,
@@ -62,7 +64,7 @@ func (wa WebApp) Image() string {
 }
 
 func (wa WebApp) Identifier() string {
-    return fmt.Sprintf("%v%v", wa.ID, wa.Image)
+    return wa.ID
 }
 
 func (wa WebApp) TypeIdentifier() string {
