@@ -17,6 +17,7 @@ type WebApp struct {
     Image        string
     Weight       float32
     BalancedTCPPort int
+    Status  string
 }
 
 func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {

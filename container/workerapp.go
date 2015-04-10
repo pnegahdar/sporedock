@@ -15,6 +15,7 @@ type WorkerApp struct {
     ID     string
     Image  string
     Weight float32
+    Status  string
 }
 
 func (wa WorkerApp) HostConfig() dockerclient.HostConfig {

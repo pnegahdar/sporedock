@@ -6,6 +6,7 @@ import (
 	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/utils"
 	"sort"
+    "github.com/pnegahdar/sporedock/store"
 )
 
 type MachineManifest struct {
@@ -34,10 +35,10 @@ func (mm MachineManifest) validate() error {
     return nil
 }
 
-func (wa *WebApp) FromString(data string) (*store.Storable, error) {
-    utils.Unmarshall(data, wa)
-    err := wa.validate()
-    return wa, err
+func (mm *MachineManifest) FromString(data string) (*store.Storable, error) {
+    utils.Unmarshall(data, mm)
+    err := mm.validate()
+    return mm, err
 }
 
 func (mm MachineManifest) IterApps() []DockerApp {
