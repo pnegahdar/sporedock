@@ -38,11 +38,12 @@ func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
         utils.LogInfo(fmt.Sprintf("Adding grunt %v", gruntName))
         gr.Grunts[gruntName] = grunt
         gr.runCount[gruntName] = 0
+        gr.startMe <- gruntName
     }
 
 }
 
-func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
+func (gr *GruntRegistry) runGrunt(gruntName string) {
     grunt, exists := gr.Grunts[gruntName]
     if !exists {
         utils.LogWarn(fmt.Sprintf("Grunt %v DNE %v", gruntName, grunt))
@@ -56,7 +57,7 @@ func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
         defer func() {
             if rec := recover(); rec != nil {
                 utils.LogInfo(fmt.Sprintf("Grunt %v paniced", gruntName))
-                startMe <- gruntName
+                gr.startMe <- gruntName
             }
         }()
         time.Sleep(time.Duration(delayTot)*time.Second)
@@ -65,7 +66,7 @@ func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
 
         //Send over again
         utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
-        startMe <- gruntName
+        gr.startMe <- gruntName
 
     }()
 }
@@ -73,17 +74,12 @@ func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
 func (gr *GruntRegistry) run() {
     utils.LogInfo("Runner started.")
     for gruntToStart := range (gr.startMe) {
-        go gr.runGrunt(gr.startMe, gruntToStart)
+        go gr.runGrunt(gruntToStart)
     }
 }
 
 func (gr *GruntRegistry) Start(grunts ...Grunt) {
     gr.registerGrunts(grunts...)
-    go gr.run()
-    for _, grunt := range (gr.Grunts) {
-        startMe <- grunt.Name()
-    }
-    // Block
-    for {}
+    gr.run()
 }
 
