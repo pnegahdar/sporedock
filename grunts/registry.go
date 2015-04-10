@@ -24,11 +24,13 @@ type GruntRegistry struct {
     Grunts map[string]Grunt
     Context RunContext
     runCount map[string]int
+    startMe chan string
 }
 
 func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
     gr.Grunts = make(map[string]Grunt)
     gr.runCount = make(map[string]int)
+    gr.startMe = make(chan string, len(grunts))
     // Todo: check should run
     utils.LogInfo(fmt.Sprintf("%v grunts", len(grunts)))
     for _, grunt := range (grunts) {
@@ -68,17 +70,16 @@ func (gr *GruntRegistry) runGrunt(startMe chan string, gruntName string) {
     }()
 }
 
-func (gr *GruntRegistry) run(startMe chan string) {
+func (gr *GruntRegistry) run() {
     utils.LogInfo("Runner started.")
-    for gruntToStart := range (startMe) {
-        go gr.runGrunt(startMe, gruntToStart)
+    for gruntToStart := range (gr.startMe) {
+        go gr.runGrunt(gr.startMe, gruntToStart)
     }
 }
 
 func (gr *GruntRegistry) Start(grunts ...Grunt) {
     gr.registerGrunts(grunts...)
-    startMe := make(chan string, len(grunts))
-    go gr.run(startMe)
+    go gr.run()
     for _, grunt := range (gr.Grunts) {
         startMe <- grunt.Name()
     }
