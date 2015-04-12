@@ -2,53 +2,14 @@ package store
 
 import (
 	"errors"
+	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"strings"
 )
 
-type SporeType int
-
-var CurrentStore SporeStore
-
-const (
-	TypeSporeLeader SporeType = iota
-	TypeSporeMember
-	TypeSporeWatcher
-)
-
 var ConnectionStringError = errors.New("Connection string must start with redis://")
 var ConnectionStringNotSetError = errors.New("Connection string not set.")
-
-type Spore struct {
-	Group      string
-	Name       string
-	MemberIP   string
-	MemberType SporeType
-	Tags       map[string]string
-}
-
-func (s Spore) TypeIdentifier() string {
-	return "spore"
-}
-
-func (s Spore) Identifier() string {
-	return s.Name
-}
-
-func (s Spore) ToString() string {
-	return utils.Marshall(s)
-}
-
-func (s Spore) validate() error {
-	return nil
-}
-
-func (s *Spore) FromString(data string) (*Storable, error) {
-	utils.Unmarshall(data, s)
-	err := s.validate()
-	return s, err
-}
 
 type Storable interface {
 	TypeIdentifier() string
@@ -57,12 +18,11 @@ type Storable interface {
 	FromString(data string) (Storable, error)
 }
 
-// Todo (parham): Key locking with with some sort of watch interface
 type SporeStore interface {
-	ListMembers() []Spore
-	GetLeader() Spore
-	GetMe() Spore
-	GetGroupName() string
+	Members() []cluster.Spore
+	Leader() cluster.Spore
+	Me() cluster.Spore
+	GroupName() string
 	AmLeader() bool
 	GetAll(retType Storable) []Storable
 	Set(item Storable)
@@ -70,16 +30,12 @@ type SporeStore interface {
 	Get(item Storable) Storable
 	GetLog(item Storable, limit int) []Storable
 	Delete(item Storable)
-	Run(group string, myType SporeType, myIP net.IP)
+	Run(group string, myType cluster.SporeType, myIP net.IP)
 }
 
-func GetStore(connectionString string, group string) SporeStore {
-	// Return redis store
-	if CurrentStore != nil {
-		return CurrentStore
-	}
+func CreateStore(connectionString, group string) SporeStore {
 	if strings.HasPrefix(connectionString, "redis://") {
-		return &RedisStore{connectionString}
+		return NewRedisStore(connectionString, group)
 	} else {
 		utils.HandleError(ConnectionStringError)
 		return nil

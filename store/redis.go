@@ -30,11 +30,25 @@ var OneExitedError = errors.New("One of hte proceses exited")
 var BadKeyError = errors.New("The key provided wasn't in the the right format")
 var BadIPError = errors.New("The IP failed to parse")
 
+func (rs RedisStore) groupKey(storable Storable) string {
+	return strings.Join([]string{"sporedock", rs.group, storable.TypeIdentifier()}, ":")
+}
+
+func (rs RedisStore) itemKey(storable Storable) string {
+	return strings.Join([]string{rs.groupKey(storable), storable.Identifier()}, ":")
+}
+
+func (rs RedisStore) subItemKey(storable Storable, subitems ...string) {
+	items := append([]string{rs.itemKey(storable)}, subitems)
+	return strings.Join(items, ":")
+}
+
 func (rs RedisStore) leaderKey() string {
-	return fmt.Sprintf("sporedock:leader:%v", rs.group)
+	return strings.Join([]string{"sporedock", rs.group, "_leader"}, ":")
 }
 
 func (rs RedisStore) myKey() string {
+	return strings.Join()
 	return fmt.Sprintf("sporedock:members:%v:%v:%v", rs.group, rs.myIP.String(), rs.myType)
 }
 
@@ -86,7 +100,7 @@ func (rs RedisStore) runCheckIn(wg sync.WaitGroup) {
 
 }
 
-func (rs RedisStore) Run(group string, myType SporeType, myIP net.IP) {
+func (rs RedisStore) Run(context grunts.RunContext) {
 	if rs.connectionString == nil {
 		utils.HandleError(ConnectionStringNotSetError)
 	}
@@ -189,4 +203,9 @@ func (rs RedisStore) Load(load_into Storable) (*Storable, error) {
 	}
 	ret_val, err := load_into.Deserialize(data)
 	return ret_val, error
+}
+
+func NewRedisStore(redisConnecitonURI, group string) RedisStore {
+	return &RedisStore{connectionString: redisConnecitonURI, group: group}
+
 }

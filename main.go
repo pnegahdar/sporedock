@@ -2,20 +2,31 @@ package main
 
 import (
 	logging "github.com/op/go-logging"
+	"github.com/pnegahdar/sporedock/cluster"
+	"github.com/pnegahdar/sporedock/grunts"
+	"github.com/pnegahdar/sporedock/store"
+	"net"
 	"runtime"
-    "github.com/pnegahdar/sporedock/grunts"
 )
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logging.SetLevel(logging.INFO, "main")
+	connectionString := "redis://localhost:6379"
+	groupName := "testGroup"
+	machineID := "myMachine"
+	myIP := net.ParseIP("127.0.0.1")
+	myType := cluster.TypeSporeMember
 
-    // Create Run Context
-    runContext := grunts.RunContext{}
-    gruntRegistry := grunts.GruntRegistry{Context: runContext}
+	// Initialize workers
+	genericWorker := grunts.TestRunner{}
+	store := store.CreateStore(connectionString, groupName)
 
-    // Create and Register Grunts
-    genericWorker := grunts.TestRunner{}
-    gruntRegistry.Start(genericWorker)
+	// Create Run Context
+	runContext := grunts.RunContext{myMachineID: machineID, store: store, myIP: myIP, myType: myType}
+
+	// Register and run
+	gruntRegistry := grunts.GruntRegistry{Context: runContext}
+	gruntRegistry.Start(genericWorker, store)
 
 }
