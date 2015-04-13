@@ -22,22 +22,22 @@ type Storable interface {
 
 type SporeStore interface {
 	MyID() string
-    Get(item Storable) Storable
-    GetAll(retType Storable) []Storable
-    GetLog(retType Storable, limit int) []Storable
-    Set(item Storable)
-    SetLog(item Storable, logLength int) error
+	Get(item Storable) Storable
+	GetAll(retType Storable) []Storable
+	GetLog(retType Storable, limit int) []Storable
+	Set(item Storable)
+	SetLog(item Storable, logLength int) error
 	Delete(item Storable)
 	Run(group string, myType cluster.SporeType, myIP net.IP)
 }
 
 func CreateStore(connectionString, group string) SporeStore {
-    if (CurrentStore != SporeStore{}){
-        return CurrentStore
-    }
+	if (CurrentStore != SporeStore{}) {
+		return CurrentStore
+	}
 	if strings.HasPrefix(connectionString, "redis://") {
 		CurrentStore = NewRedisStore(connectionString, group)
-        return CurrentStore
+		return CurrentStore
 	} else {
 		utils.HandleError(ConnectionStringError)
 		return nil

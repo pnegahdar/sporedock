@@ -30,7 +30,8 @@ func (mm MachineManifest) validate() error {
 	return nil
 }
 
-func (mm *MachineManifest) FromString(data string) (*MachineManifest, error) {
+func (mm MachineManifest) FromString(data string) (*MachineManifest, error) {
+	mm := *MachineManifest{}
 	utils.Unmarshall(data, mm)
 	err := mm.validate()
 	return mm, err

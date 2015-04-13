@@ -56,7 +56,8 @@ func (wa WorkerApp) validate() error {
 	return nil
 }
 
-func (wa *WorkerApp) FromString(data string) (*WebApp, error) {
+func (wa WorkerApp) FromString(data string) (*WebApp, error) {
+	wa := *WorkerApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()
 	return wa, err

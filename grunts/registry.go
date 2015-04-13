@@ -2,8 +2,7 @@ package grunts
 
 import (
 	"fmt"
-	"github.com/pnegahdar/sporedock/cluster"
-	"github.com/pnegahdar/sporedock/store"
+
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"time"
@@ -33,9 +32,6 @@ type GruntRegistry struct {
 }
 
 func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
-	// Todo: remove these?
-	gr.Grunts = make(map[string]Grunt)
-	gr.runCount = make(map[string]int)
 	gr.startMe = make(chan string, len(grunts))
 	// Todo: check should run
 	utils.LogInfo(fmt.Sprintf("%v grunts", len(grunts)))

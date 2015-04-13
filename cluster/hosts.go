@@ -27,7 +27,8 @@ func (hm HostMap) validate() error {
 	return nil
 }
 
-func (hm *HostMap) FromString(data string) (*HostMap, error) {
+func (hm HostMap) FromString(data string) (*HostMap, error) {
+	hm := *HostMap{}
 	utils.Unmarshall(data, hm)
 	err := hm.validate()
 	return hm, err

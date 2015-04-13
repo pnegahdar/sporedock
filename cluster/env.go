@@ -32,7 +32,8 @@ func (e Env) validate() error {
 	return nil
 }
 
-func (e *Env) FromString(data string) (*Env, error) {
+func (e Env) FromString(data string) (*Env, error) {
+	e := *Env{}
 	utils.Unmarshall(data, e)
 	err := e.validate()
 	return e, err

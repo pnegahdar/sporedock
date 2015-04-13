@@ -79,7 +79,8 @@ func (wa WebApp) validate() error {
 	return nil
 }
 
-func (wa *WebApp) FromString(data string) (*WebApp, error) {
+func (wa WebApp) FromString(data string) (*WebApp, error) {
+	wa := *WebApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()
 	return wa, err
