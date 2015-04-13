@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-const RestartDelaySeconds = 1
+const RestartDecaySeconds = 1
 
 type RunContext struct {
-	//store store.SporeStore
 	store       store.SporeStore
 	myMachineID string
 	myIP        net.IP
 	myType      cluster.SporeType
+	myGroup     string
 }
 
 type Grunt interface {
@@ -34,7 +34,7 @@ type GruntRegistry struct {
 
 func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
 	// Todo: remove these?
-    gr.Grunts = make(map[string]Grunt)
+	gr.Grunts = make(map[string]Grunt)
 	gr.runCount = make(map[string]int)
 	gr.startMe = make(chan string, len(grunts))
 	// Todo: check should run
@@ -56,7 +56,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 		return
 	}
 	runCount := gr.runCount[gruntName]
-	delayTot := RestartDelaySeconds * runCount
+	delayTot := RestartDecaySeconds * runCount
 	gr.runCount[gruntName] = runCount + 1
 	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
 	go func() {

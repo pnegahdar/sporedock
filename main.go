@@ -23,7 +23,7 @@ func main() {
 	store := store.CreateStore(connectionString, groupName)
 
 	// Create Run Context
-	runContext := grunts.RunContext{myMachineID: machineID, store: store, myIP: myIP, myType: myType}
+	runContext := grunts.RunContext{myMachineID: machineID, store: store, myIP: myIP, myType: myType, myGroup: groupName}
 
 	// Register and run
 	gruntRegistry := grunts.GruntRegistry{Context: runContext}

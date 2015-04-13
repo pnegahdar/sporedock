@@ -11,6 +11,8 @@ import (
 var ConnectionStringError = errors.New("Connection string must start with redis://")
 var ConnectionStringNotSetError = errors.New("Connection string not set.")
 
+var CurrentStore SporeStore
+
 type Storable interface {
 	TypeIdentifier() string
 	Identifier() string
@@ -19,23 +21,23 @@ type Storable interface {
 }
 
 type SporeStore interface {
-	Members() []cluster.Spore
-	Leader() cluster.Spore
-	Me() cluster.Spore
-	GroupName() string
-	AmLeader() bool
-	GetAll(retType Storable) []Storable
-	Set(item Storable)
-	SetLog(item Storable, logLength int) error
-	Get(item Storable) Storable
-	GetLog(item Storable, limit int) []Storable
+	MyID() string
+    Get(item Storable) Storable
+    GetAll(retType Storable) []Storable
+    GetLog(retType Storable, limit int) []Storable
+    Set(item Storable)
+    SetLog(item Storable, logLength int) error
 	Delete(item Storable)
 	Run(group string, myType cluster.SporeType, myIP net.IP)
 }
 
 func CreateStore(connectionString, group string) SporeStore {
+    if (CurrentStore != SporeStore{}){
+        return CurrentStore
+    }
 	if strings.HasPrefix(connectionString, "redis://") {
-		return NewRedisStore(connectionString, group)
+		CurrentStore = NewRedisStore(connectionString, group)
+        return CurrentStore
 	} else {
 		utils.HandleError(ConnectionStringError)
 		return nil
