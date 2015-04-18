@@ -3,6 +3,7 @@ package cluster
 import (
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
+    "github.com/pnegahdar/sporedock/types"
 )
 
 type WorkerApp struct {
@@ -32,7 +33,7 @@ func (wa WorkerApp) Env() map[string]string {
 	for _, env := range wa.AttachedEnvs {
 		envList = append(envList, FindEnv(env).Env)
 	}
-    envList = append(envList, wa.ExtraEnv)
+	envList = append(envList, wa.ExtraEnv)
 	return utils.FlattenHashes(envList...)
 }
 
@@ -50,15 +51,15 @@ func (wa WorkerApp) TypeIdentifier() string {
 
 func (wa WorkerApp) ToString() string {
 	resp, err := utils.Marshall(wa)
-    utils.HandleError(err)
-    return resp
+	utils.HandleError(err)
+	return resp
 }
 
 func (wa WorkerApp) validate() error {
 	return nil
 }
 
-func (wa WorkerApp) FromString(data string) (WorkerApp, error) {
+func (wa WorkerApp) FromString(data string) (types.Storable, error) {
 	wa = WorkerApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()
