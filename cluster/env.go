@@ -25,23 +25,25 @@ func (e Env) MyIdentifier() string {
 }
 
 func (e Env) ToString() string {
-	return utils.Marshall(e)
+	data, err := utils.Marshall(e)
+	utils.HandleError(err)
+	return data
 }
 
 func (e Env) validate() error {
 	return nil
 }
 
-func (e Env) FromString(data string) (*Env, error) {
-	e := *Env{}
-	utils.Unmarshall(data, e)
+func (e Env) FromString(data string) (Env, error) {
+	e = Env{}
+	utils.Unmarshall(data, &e)
 	err := e.validate()
 	return e, err
 }
 
 func FindEnv(name string) Env {
 	// TODO
-	return Env
+	return Env{}
 }
 
 func EnvAsDockerKV(envVars map[string]string) []string {

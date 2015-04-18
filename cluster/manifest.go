@@ -10,10 +10,6 @@ type MachineManifest struct {
 	WorkerApps string
 }
 
-func (mm MachineManifest) Image() string {
-	return mm.Image
-}
-
 func (mm MachineManifest) Identifier() string {
 	return mm.Spore
 }
@@ -23,16 +19,18 @@ func (mm MachineManifest) TypeIdentifier() string {
 }
 
 func (mm MachineManifest) ToString() string {
-	return utils.Marshall(mm)
+	data, err := utils.Marshall(mm)
+	utils.HandleError(err)
+	return data
 }
 
 func (mm MachineManifest) validate() error {
 	return nil
 }
 
-func (mm MachineManifest) FromString(data string) (*MachineManifest, error) {
-	mm := *MachineManifest{}
-	utils.Unmarshall(data, mm)
+func (mm MachineManifest) FromString(data string) (MachineManifest, error) {
+	mm = MachineManifest{}
+	utils.Unmarshall(data, &mm)
 	err := mm.validate()
 	return mm, err
 }

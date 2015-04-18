@@ -7,7 +7,7 @@ import (
 
 type TestRunner struct{}
 
-func (tr TestRunner) Name() string {
+func (tr TestRunner) ProcName() string {
 	return "TEST RUNNER"
 }
 
