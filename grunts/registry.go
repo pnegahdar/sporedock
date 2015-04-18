@@ -21,13 +21,13 @@ type RunContext struct {
 
 type Grunt interface {
 	ProcName() string
-	Run(runContext RunContext)
+	Run(runContext *RunContext)
 	ShouldRun(runContext RunContext) bool
 }
 
 type GruntRegistry struct {
 	Grunts   map[string]Grunt
-	Context  RunContext
+	Context  *RunContext
 	runCount map[string]int
 	startMe  chan string
 }
@@ -37,6 +37,7 @@ func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
 	// Todo: check should run
 	utils.LogInfo(fmt.Sprintf("%v grunts", len(grunts)))
 	for _, grunt := range grunts {
+        fmt.Println(grunt)
 		gruntName := grunt.ProcName()
 		utils.LogInfo(fmt.Sprintf("Adding grunt %v", gruntName))
 		gr.Grunts[gruntName] = grunt
@@ -75,7 +76,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 }
 
 func (gr *GruntRegistry) Start(grunts ...Grunt) {
-	gr.registerGrunts(grunts...)
+    gr.registerGrunts(grunts...)
 	utils.LogInfo("Runner started.")
 	// Range blocks on startMe channel
 	for gruntToStart := range gr.startMe {
@@ -99,6 +100,6 @@ func CreateAndRun() {
 	// Register and run
 	grunts := make(map[string]Grunt)
     runCount := make(map[string]int)
-    gruntRegistry := GruntRegistry{Context: runContext, Grunts: grunts, }
+    gruntRegistry := GruntRegistry{Context: &runContext, Grunts: grunts, runCount: runCount}
 	gruntRegistry.Start(genericWorker, store)
 }
