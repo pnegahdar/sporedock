@@ -1,4 +1,4 @@
-package container
+package cluster
 
 import "github.com/samalba/dockerclient"
 

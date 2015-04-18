@@ -1,7 +1,6 @@
-package container
+package cluster
 
 import (
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 )
@@ -12,7 +11,7 @@ type WorkerApp struct {
 	ExtraEnv     map[string]string
 	Tags         map[string]string
 	ID           string
-	Image        string
+	image        string
 	Weight       float32
 	Status       string
 }
@@ -21,23 +20,24 @@ func (wa WorkerApp) HostConfig() dockerclient.HostConfig {
 	return dockerclient.HostConfig{}
 }
 func (wa WorkerApp) ContainerConfig() dockerclient.ContainerConfig {
-	envsForDocker := cluster.EnvAsDockerKV(wa.Env())
+	envsForDocker := EnvAsDockerKV(wa.Env())
 	return dockerclient.ContainerConfig{
 		Env:   envsForDocker,
-		Image: wa.Image,
+		Image: wa.image,
 	}
 }
 
 func (wa WorkerApp) Env() map[string]string {
 	envList := []map[string]string{}
 	for _, env := range wa.AttachedEnvs {
-		envList = append(envList, cluster.FindEnv(env).Env)
+		envList = append(envList, FindEnv(env).Env)
 	}
-	return utils.FlattenHashes(wa.ExtraEnv, envList...)
+    envList = append(envList, wa.ExtraEnv)
+	return utils.FlattenHashes(envList...)
 }
 
 func (wa WorkerApp) Image() string {
-	return wa.Image
+	return wa.image
 }
 
 func (wa WorkerApp) Identifier() string {
@@ -49,15 +49,17 @@ func (wa WorkerApp) TypeIdentifier() string {
 }
 
 func (wa WorkerApp) ToString() string {
-	return utils.Marshall(wa)
+	resp, err := utils.Marshall(wa)
+    utils.HandleError(err)
+    return resp
 }
 
 func (wa WorkerApp) validate() error {
 	return nil
 }
 
-func (wa WorkerApp) FromString(data string) (*WebApp, error) {
-	wa := *WorkerApp{}
+func (wa WorkerApp) FromString(data string) (WorkerApp, error) {
+	wa = WorkerApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()
 	return wa, err

@@ -57,7 +57,7 @@ func CreateStore(connectionString, group string) SporeStore {
 
 type RedisStore struct {
 	connectionString string
-	connPool       *redis.Pool
+	connPool         *redis.Pool
 	group            string
 	myIP             net.IP
 	amLeader         bool
@@ -98,19 +98,19 @@ func (rs RedisStore) membersKey() string {
 func (rs RedisStore) runLeaderElection(wg sync.WaitGroup) {
 	checkinDur := time.Millisecond * LeadershipCheckinMs
 	leaderKey := rs.leaderKey()
-    for {
-        conn := rs.connPool.Get()
-        reply, err := conn.Do("SETNX", leaderKey, rs.myMachineID)
-        utils.HandleErrorWG(err, wg)
-        resp, err := redis.Int(reply, nil)
-        utils.HandleError(err)
-        if resp == 1 {
-            _, err := conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
-            utils.HandleErrorWG(err, wg)
-        }
-        conn.Close()
-        time.Sleep(checkinDur)
-    }
+	for {
+		conn := rs.connPool.Get()
+		reply, err := conn.Do("SETNX", leaderKey, rs.myMachineID)
+		utils.HandleErrorWG(err, wg)
+		resp, err := redis.Int(reply, nil)
+		utils.HandleError(err)
+		if resp == 1 {
+			_, err := conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
+			utils.HandleErrorWG(err, wg)
+		}
+		conn.Close()
+		time.Sleep(checkinDur)
+	}
 
 }
 
@@ -118,31 +118,31 @@ func (rs RedisStore) runCheckIn(wg sync.WaitGroup) {
 	// TODO FIX
 	checkinDur := time.Millisecond * CheckinEveryMs
 	for {
-        conn := rs.connPool.Get()
-        _, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
+		conn := rs.connPool.Get()
+		_, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
 		utils.HandleErrorWG(err, wg)
 		time.Sleep(checkinDur)
-        conn.Close()
+		conn.Close()
 	}
 
 }
 
 func newRedisConnPool(server string) *redis.Pool {
-    return &redis.Pool{
-        MaxIdle: 10,
-        IdleTimeout: 240 * time.Second,
-        Dial: func () (redis.Conn, error) {
-            c, err := redis.Dial("tcp", server)
-            if err != nil {
-                return nil, err
-            }
-            return c, err
-        },
-        TestOnBorrow: func(c redis.Conn, t time.Time) error {
-            _, err := c.Do("PING")
-            return err
-        },
-    }
+	return &redis.Pool{
+		MaxIdle:     10,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", server)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
 }
 
 func (rs RedisStore) Run(context *RunContext) {
@@ -166,14 +166,14 @@ func (rs RedisStore) Run(context *RunContext) {
 }
 
 func (rs RedisStore) Get(retType Storable) Storable {
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	resp, err := conn.Do("GET", rs.itemKey(retType))
 	data, err := redis.String(resp, err)
 	utils.HandleError(err)
 	obj, err := retType.FromString(data)
-    utils.HandleError(err)
-    return obj
+	utils.HandleError(err)
+	return obj
 
 }
 
@@ -183,15 +183,15 @@ func (rs RedisStore) ProcName() string {
 
 func (rs RedisStore) GetAll(retType Storable) []Storable {
 	// Todo: Switch to hash table as this is slow
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	resp, err := conn.Do("KEYS", rs.typeKey(retType))
 	keys, err := redis.Strings(resp, err)
 	utils.HandleError(err)
 
 	conn.Send("MULTI")
 	for _, key := range keys {
-	    conn.Send("GET", key)
+		conn.Send("GET", key)
 	}
 	resp, err = conn.Do("EXEC")
 	data, err := redis.Strings(resp, err)
@@ -199,24 +199,24 @@ func (rs RedisStore) GetAll(retType Storable) []Storable {
 
 	storables := []Storable{}
 	for _, storable := range data {
-        obj, err := retType.FromString(storable)
-        utils.HandleError(err)
+		obj, err := retType.FromString(storable)
+		utils.HandleError(err)
 		storables = append(storables, obj)
 	}
 	return storables
 }
 
 func (rs RedisStore) GetLog(retType Storable, limit int) []Storable {
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	resp, err := conn.Do("LRANGE", rs.typeKey(retType), 0, limit)
 	data, err := redis.Strings(resp, err)
 	utils.HandleError(err)
 	storables := []Storable{}
 	for _, item := range data {
-        obj, err := retType.FromString(item)
-        utils.HandleError(err)
-        storables = append(storables, obj)
+		obj, err := retType.FromString(item)
+		utils.HandleError(err)
+		storables = append(storables, obj)
 	}
 	return storables
 }
@@ -224,8 +224,8 @@ func (rs RedisStore) GetLog(retType Storable, limit int) []Storable {
 func (rs RedisStore) Set(item Storable) {
 	key := rs.itemKey(item)
 	data := item.ToString()
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	_, err := conn.Do("SET", key, data)
 	utils.HandleError(err)
 }
@@ -233,8 +233,8 @@ func (rs RedisStore) Set(item Storable) {
 func (rs RedisStore) SetLog(item Storable, logLength int) {
 	rs.Set(item)
 	logKey := fmt.Sprint("%v__log", rs.itemKey(item))
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	_, err := conn.Do("LPUSH", logKey, item.ToString())
 	utils.HandleError(err)
 	_, err = conn.Do("LTRIM", logKey, 0, logLength)
@@ -242,8 +242,8 @@ func (rs RedisStore) SetLog(item Storable, logLength int) {
 }
 
 func (rs RedisStore) Delete(item Storable) {
-    conn := rs.connPool.Get()
-    defer conn.Close()
+	conn := rs.connPool.Get()
+	defer conn.Close()
 	_, err := conn.Do("DEL", rs.itemKey(item))
 	utils.HandleError(err)
 
@@ -254,6 +254,6 @@ func (rs RedisStore) ShouldRun(context RunContext) bool {
 }
 
 func NewRedisStore(redisConnecitonURI, group string) RedisStore {
-    redisConnecitonURI = strings.TrimPrefix(redisConnecitonURI, "redis://")
+	redisConnecitonURI = strings.TrimPrefix(redisConnecitonURI, "redis://")
 	return RedisStore{connectionString: redisConnecitonURI, group: group}
 }

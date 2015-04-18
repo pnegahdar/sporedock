@@ -1,8 +1,7 @@
-package container
+package cluster
 
 import (
 	"fmt"
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 )
@@ -13,14 +12,14 @@ type WebApp struct {
 	ExtraEnv        map[string]string
 	Tags            map[string]string
 	ID              string
-	Image           string
+	image           string
 	Weight          float32
 	BalancedTCPPort int
 	Status          string
 }
 
 func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
-	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.Image)
+	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.image)
 	restartPolicy := dockerclient.RestartPolicy{
 		Name:              policyName,
 		MaximumRetryCount: 5,
@@ -45,22 +44,23 @@ func (wa WebApp) PortBindings() map[string][]dockerclient.PortBinding {
 func (wa WebApp) Env() map[string]string {
 	envList := []map[string]string{}
 	for _, env := range wa.AttachedEnvs {
-		envList = append(envList, cluster.FindEnv(env).Env)
+		envList = append(envList, FindEnv(env).Env)
 	}
-	return utils.FlattenHashes(wa.ExtraEnv, envList...)
+    envList = append(envList, wa.ExtraEnv)
+	return utils.FlattenHashes(envList...)
 }
 
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
-	envsForDocker := cluster.EnvAsDockerKV(wa.Env())
+	envsForDocker := EnvAsDockerKV(wa.Env())
 	exposedPorts := map[string]struct{}{}
 	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct{}{}
 	return dockerclient.ContainerConfig{
 		Env:          envsForDocker,
-		Image:        wa.Image,
+		Image:        wa.image,
 		ExposedPorts: exposedPorts}
 }
 func (wa WebApp) Image() string {
-	return wa.Image
+	return wa.image
 }
 
 func (wa WebApp) Identifier() string {
@@ -72,15 +72,17 @@ func (wa WebApp) TypeIdentifier() string {
 }
 
 func (wa WebApp) ToString() string {
-	return utils.Marshall(wa)
+    resp, err := utils.Marshall(wa)
+    utils.HandleError(err)
+    return resp
 }
 
 func (wa WebApp) validate() error {
 	return nil
 }
 
-func (wa WebApp) FromString(data string) (*WebApp, error) {
-	wa := *WebApp{}
+func (wa WebApp) FromString(data string) (WebApp, error) {
+	wa = WebApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()
 	return wa, err
