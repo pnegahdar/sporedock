@@ -3,10 +3,10 @@ package director
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/discovery"
-	"github.com/pnegahdar/sporedock/server"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 	"io/ioutil"
@@ -21,13 +21,20 @@ type DockerApp interface {
 	GetConfig() DockerAppConfig
 }
 
-const DockerHost = "https://192.168.59.103:2376"
+var DockerImageNotValidError = errors.New("Image not valid in the form of <repo>:<tag>")
+var DockerHostEnvVarError = errors.New("Host Env var not set please fix.")
+
+const AppLocationsKey = "sporedock:locations"
 
 var cachedDockerClient dockerclient.DockerClient
 
 func CachedDockerClient() dockerclient.DockerClient {
 	if cachedDockerClient == nil {
 		tlsConfig := tls.Config{}
+		dockerHost := os.Getenv("DOCKER_HOST")
+		if dockerHost == "" {
+			utils.HandleError(DockerHostEnvVarError)
+		}
 		if os.Getenv("DOCKER_TLS_VERIFY") == "1" {
 			certDir := os.Getenv("DOCKER_CERT_PATH") + "/"
 			certPath := certDir + "cert.pem"
@@ -42,17 +49,17 @@ func CachedDockerClient() dockerclient.DockerClient {
 			tlsConfig.Certificates = []tls.Certificate{cert}
 			tlsConfig.RootCAs = certPool
 		}
-		client, err := dockerclient.NewDockerClient(DockerHost, &tlsConfig)
+		client, err := dockerclient.NewDockerClient(dockerHost, &tlsConfig)
 		utils.HandleError(err)
 		cachedDockerClient = client
 	}
 	return cachedDockerClient
 }
 
-func hasImage(imagelist []*dockerclient.Image, image, tag string) bool {
+func hasImage(imagelist []*dockerclient.Image, image string) bool {
 	for _, im := range imagelist {
 		for _, ims := range im.RepoTags {
-			if fmt.Sprintf("%v:%v", image, tag) == ims {
+			if image == ims {
 				return true
 			}
 		}
@@ -60,17 +67,27 @@ func hasImage(imagelist []*dockerclient.Image, image, tag string) bool {
 	return false
 }
 
+func parseDockerImage(image string) (string, string, error) {
+	parts := strings.Split(image, ":")
+	if len(parts != 2) {
+		return nil, DockerImageNotValidError
+	}
+	return parts[0], parts[1]
+}
+
 func pullApp(app cluster.DockerApp, wg *sync.WaitGroup) {
 	client := CachedDockerClient()
 	imgs, err := client.ListImages()
 	utils.HandleError(err)
 	image := app.GetImage()
-	tag := app.GetTag()
+	image, tag, err := parseDockerImage(image)
+	utils.HandleError(err)
 	// Todo(parham): notify on change here...
-	if !hasImage(imgs, image, tag) {
-		utils.LogDebug(fmt.Sprintf("Started pulling docker image %v:%v", image, tag))
+	if !hasImage(imgs, image) {
+		utils.LogDebug(fmt.Sprintf("Started pulling docker image %v", image))
 		err = client.PullImage(image, tag)
-		utils.LogInfo(fmt.Sprintf("Finished pulling docker image %v:%v", image, tag))
+		utils.HandleError(err)
+		utils.LogInfo(fmt.Sprintf("Finished pulling docker image %v", image))
 	} else {
 		utils.LogDebug(fmt.Sprintf("Already have image %v:%v", image, tag))
 	}
@@ -161,21 +178,23 @@ func pathLastPart(path string) string {
 func CleanupLocations() {
 	currentCluster := cluster.GetCurrentCluster()
 	currentManifest := cluster.GetCurrentManifest()
-	machineList := []string{}
-	for _, machine := range currentManifest {
-		machineList = append(machineList, machine.Machine.Name)
+	spores := []string{}
+	for _, spore := range currentManifest {
+		spores = append(spores, spore.Spore.Name)
 	}
 	// Remove APPS DNE
 	appNames := []string{}
 	for _, app := range currentCluster.IterApps() {
 		appNames = append(appNames, app.GetName())
 	}
-	resp, err := server.EtcdClient().Get(cluster.AppLocationsDirKey, true, false)
-	if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+	store := store.GetStore()
+	resp, err := store.GetKey(AppLocationsKey)
+	utils.HandleError(err)
+	if resp == "" {
 		return
 	}
 	utils.HandleError(err)
-	for _, node := range resp.Node.Nodes {
+	for _, node := range resp.Noe.Nodes {
 		appName := pathLastPart(node.Key)
 		if !In(appNames, appName) {
 			utils.LogDebug(fmt.Sprintf("App %v no longer exists removing loc.", appName))
@@ -193,7 +212,7 @@ func CleanupLocations() {
 		utils.HandleError(err)
 		for _, node := range resp.Node.Nodes {
 			machineName := pathLastPart(node.Key)
-			if !In(machineList, machineName) {
+			if !In(spores, machineName) {
 				utils.LogDebug(fmt.Sprintf("Machine %v no longer exists removing loc.", machineName))
 				_, err := server.EtcdClient().Delete(node.Key, true)
 				utils.HandleError(err)
@@ -205,9 +224,10 @@ func CleanupLocations() {
 
 func UpdateLocations(appNames []string) {
 	dc := CachedDockerClient()
-	machine := discovery.CurrentMachine()
+	store := store.GetStore()
+	mySpore := store.GetMe()
+	locations := cluster.GetCurrentLBSet()
 	for _, appName := range appNames {
-		keyName := cluster.GetMachineAppLocationKey(appName, machine.Name)
 		resp, err := dc.InspectContainer(appName)
 		utils.HandleError(err)
 		// Remove dead app
@@ -224,7 +244,7 @@ func UpdateLocations(appNames []string) {
 		for k, v := range bindings {
 			if k == "80/tcp" {
 				//Todo(parham): Only allows for one per node
-				location := machine.GetPortLocation(v[0].HostPort)
+				location := mySpore.GetPortLocation(v[0].HostPort)
 				_, err := server.EtcdClient().Set(keyName, location, 0)
 				utils.HandleError(err)
 			}

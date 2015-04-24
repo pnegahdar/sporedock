@@ -2,21 +2,24 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 )
 
 type WebApp struct {
-	Count        int      `flatten:"{{ .ID }}/Count"`
-	Env          string   `flatten:"{{ .ID }}/Env/"`
-	ID           string   `flatten:"{{ .ID }}"`
-	Image        string   `flatten:"{{ .ID }}/Image"`
-	Tag          string   `flatten:"{{ .ID }}/Tag"`
-	WebEndpoints []string `flatten:"{{ .ID }}/WebEndpoints/"` // Todo(parham) ensure uniqueness
-	Weight       float32  `flatten:"{{ .ID }}/Weight"`
+	Count           int
+	AttachedEnvs    []string
+	ExtraEnv        map[string]string
+	Tags            map[string]string
+	ID              string
+	image           string
+	Weight          float32
+	BalancedTCPPort int
+	Status          string
 }
 
-func (wa WebApp) GetRestartPolicy() dockerclient.RestartPolicy {
-	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%vTag%v", wa.ID, wa.Image, wa.Tag)
+func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
+	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.image)
 	restartPolicy := dockerclient.RestartPolicy{
 		Name:              policyName,
 		MaximumRetryCount: 5,
@@ -26,43 +29,61 @@ func (wa WebApp) GetRestartPolicy() dockerclient.RestartPolicy {
 
 func (wa WebApp) HostConfig() dockerclient.HostConfig {
 	return dockerclient.HostConfig{
-		PortBindings:  wa.GetPortBindings(),
-		RestartPolicy: wa.GetRestartPolicy(),
+		PortBindings:  wa.PortBindings(),
+		RestartPolicy: wa.RestartPolicy(),
 	}
 }
 
-func (wa WebApp) GetPortBindings() map[string][]dockerclient.PortBinding {
+func (wa WebApp) PortBindings() map[string][]dockerclient.PortBinding {
 	anyPort := dockerclient.PortBinding{HostPort: "0"}
 	bindings := map[string][]dockerclient.PortBinding{}
-	bindings["80/tcp"] = []dockerclient.PortBinding{anyPort}
+	bindings[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = []dockerclient.PortBinding{anyPort}
 	return bindings
 }
 
+func (wa WebApp) Env() map[string]string {
+	envList := []map[string]string{}
+	for _, env := range wa.AttachedEnvs {
+		envList = append(envList, FindEnv(env).Env)
+	}
+    envList = append(envList, wa.ExtraEnv)
+	return utils.FlattenHashes(envList...)
+}
+
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
-	currentCluster := GetCurrentCluster()
-	envList := currentCluster.GetEnv(wa.Env).AsDockerSlice()
-	imageFull := fmt.Sprintf("%v:%v", wa.Image, wa.Tag)
+	envsForDocker := EnvAsDockerKV(wa.Env())
 	exposedPorts := map[string]struct{}{}
-	exposedPorts["80/tcp"] = struct{}{}
+	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct{}{}
 	return dockerclient.ContainerConfig{
-		Env:          envList,
-		Image:        imageFull,
+		Env:          envsForDocker,
+		Image:        wa.image,
 		ExposedPorts: exposedPorts}
 }
-func (wa WebApp) GetImage() string {
-	return wa.Image
+func (wa WebApp) Image() string {
+	return wa.image
 }
 
-func (wa WebApp) GetTag() string {
-	return wa.Tag
-}
-func (wa WebApp) GetName() string {
-	return fmt.Sprintf("Sporedock%v%v%v", wa.ID, wa.Image, wa.Tag)
+func (wa WebApp) Identifier() string {
+	return wa.ID
 }
 
-type WebApps []WebApp
+func (wa WebApp) TypeIdentifier() string {
+	return "webapp"
+}
 
-// Define the interface for sorting
-func (wa WebApps) Len() int           { return len(wa) }
-func (wa WebApps) Swap(i, j int)      { wa[i], wa[j] = wa[j], wa[i] }
-func (wa WebApps) Less(i, j int) bool { return wa[i].Weight < wa[j].Weight }
+func (wa WebApp) ToString() string {
+    resp, err := utils.Marshall(wa)
+    utils.HandleError(err)
+    return resp
+}
+
+func (wa WebApp) validate() error {
+	return nil
+}
+
+func (wa WebApp) FromString(data string) (WebApp, error) {
+	wa = WebApp{}
+	utils.Unmarshall(data, wa)
+	err := wa.validate()
+	return wa, err
+}

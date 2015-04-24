@@ -1,35 +1,66 @@
 package cluster
 
-import "github.com/samalba/dockerclient"
+import (
+	"github.com/pnegahdar/sporedock/utils"
+	"github.com/samalba/dockerclient"
+)
 
 type WorkerApp struct {
-	Count  int     `flatten:"{{ .ID }}/Count"`
-	Env    string  `flatten:"{{ .ID }}/Env/"`
-	ID     string  `flatten:"{{ .ID }}"`
-	Image  string  `flatten:"{{ .ID }}/Image"`
-	Tag    string  `flatten:"{{ .ID }}/Tag"`
-	Weight float32 `flatten:"{{ .ID }}/Weight"`
+	Count        int
+	AttachedEnvs []string
+	ExtraEnv     map[string]string
+	Tags         map[string]string
+	ID           string
+	image        string
+	Weight       float32
+	Status       string
 }
 
 func (wa WorkerApp) HostConfig() dockerclient.HostConfig {
 	return dockerclient.HostConfig{}
 }
 func (wa WorkerApp) ContainerConfig() dockerclient.ContainerConfig {
-	return dockerclient.ContainerConfig{}
+	envsForDocker := EnvAsDockerKV(wa.Env())
+	return dockerclient.ContainerConfig{
+		Env:   envsForDocker,
+		Image: wa.image,
+	}
 }
-func (wa WorkerApp) GetImage() string {
-	return wa.Image
+
+func (wa WorkerApp) Env() map[string]string {
+	envList := []map[string]string{}
+	for _, env := range wa.AttachedEnvs {
+		envList = append(envList, FindEnv(env).Env)
+	}
+    envList = append(envList, wa.ExtraEnv)
+	return utils.FlattenHashes(envList...)
 }
-func (wa WorkerApp) GetTag() string {
-	return wa.Tag
+
+func (wa WorkerApp) Image() string {
+	return wa.image
 }
-func (wa WorkerApp) GetName() string {
+
+func (wa WorkerApp) Identifier() string {
 	return wa.ID
 }
 
-type WorkerApps []WorkerApp
+func (wa WorkerApp) TypeIdentifier() string {
+	return "workerapp"
+}
 
-// Define the interface for sorting
-func (wa WorkerApps) Len() int           { return len(wa) }
-func (wa WorkerApps) Swap(i, j int)      { wa[i], wa[j] = wa[j], wa[i] }
-func (wa WorkerApps) Less(i, j int) bool { return wa[i].Weight < wa[j].Weight }
+func (wa WorkerApp) ToString() string {
+	resp, err := utils.Marshall(wa)
+    utils.HandleError(err)
+    return resp
+}
+
+func (wa WorkerApp) validate() error {
+	return nil
+}
+
+func (wa WorkerApp) FromString(data string) (WorkerApp, error) {
+	wa = WorkerApp{}
+	utils.Unmarshall(data, wa)
+	err := wa.validate()
+	return wa, err
+}
