@@ -20,7 +20,6 @@ spore.vm.init = function (id) {
 
 spore.vm.clickContainer = function (container) {
   console.log(container);
-  // this.containers.push('B3');
 };
 
 spore.vm.clickSpore = function (container) {

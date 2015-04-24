@@ -37,5 +37,3 @@ m.route(document.body, "/", {
     "/spore": Layout(spore),
     '/spore/:id': Layout(spore)
 });
-
-// m.render(document.body, layout.view());

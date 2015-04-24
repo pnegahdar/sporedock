@@ -18,7 +18,6 @@ newWebapp.vm.init = function () {
 
 newWebapp.vm.clickSubmit = function () {
   console.log(R.mapObj((fn) => fn(), this.form));
-  // this.containers.push('B3');
 };
 
 newWebapp.view = function () {
@@ -47,10 +46,6 @@ newWebapp.view = function () {
 
         m('div.grid-100', [m('label', 'Image')]),
         m('input.sp-input[type="text"]', changer('image')),
-
-
-        // m('div.grid-100', [m('label', 'Weight')]),
-        // m('input.sp-input[type="text"]'),
 
         m('div.grid-100', [m('label', 'TCP Port')]),
         m('input.sp-input[type="text"]', changer('tcpPort')),
