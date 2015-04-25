@@ -1,48 +1,49 @@
 package cluster
 
 import (
-    "errors"
-    "github.com/pnegahdar/sporedock/utils"
-    "net"
+	"errors"
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
+	"net"
 )
 
 var IPParseError = errors.New("The IP of the machine is not parsable as a standard IP.")
 
 type Spore struct {
-    Group      string
-    Name       string
-    MemberIP   string
-    MemberType string
-    Tags       map[string]string
+	Group      string
+	Name       string
+	MemberIP   string
+	MemberType types.SporeType
+	Tags       map[string]string
 }
 
 func (s Spore) TypeIdentifier() string {
-    return "spore"
+	return "spore"
 }
 
 func (s Spore) Identifier() string {
-    return s.Name
+	return s.Name
 }
 
 func (s Spore) ToString() string {
-    data, err := utils.Marshall(s)
-    utils.HandleError(err)
-    return data
+	data, err := utils.Marshall(s)
+	utils.HandleError(err)
+	return data
 }
 
 func (s Spore) validate() error {
-    ok := net.ParseIP(s.MemberIP)
-    if ok == nil {
-        return IPParseError
-    }
-    return nil
+	ok := net.ParseIP(s.MemberIP)
+	if ok == nil {
+		return IPParseError
+	}
+	return nil
 }
 
 func (s Spore) FromString(data string) (Spore, error) {
-    s = Spore{}
-    utils.Unmarshall(data, &s)
-    err := s.validate()
-    return s, err
+	s = Spore{}
+	utils.Unmarshall(data, &s)
+	err := s.validate()
+	return s, err
 }
 
 //func Members(rc grunts.RunContext) []Spore {

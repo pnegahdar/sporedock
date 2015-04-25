@@ -1,9 +1,9 @@
 package cluster
 
 import (
+	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
-    "github.com/pnegahdar/sporedock/types"
 )
 
 type WorkerApp struct {
