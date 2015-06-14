@@ -6,6 +6,7 @@ import (
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 	"net/url"
 	"os"
 	"testing"
@@ -26,8 +27,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type 
+
 func TestHome(t *testing.T) {
-	resp, content=
+	cr =
 	resp, content := testGet(t, EntityTypeHome, url.Values{})
 	assert.Equal(t, resp.StatusCode, 200, "Status code was not 200")
 	assert.Contains(t, content, "Welcome", "Welcome not found in home body.")

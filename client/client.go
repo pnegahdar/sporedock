@@ -10,12 +10,10 @@ import (
 )
 
 
-type ClientResponse struct{
-	
-
+type ClientResponse struct {
+	HttpReposne *http.Response
+	Content     string
 }
-
-
 
 
 func parseError() {
@@ -26,7 +24,7 @@ func parseResp(resp *http.Response) (*http.Response, string) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.HandleError(err)
-	return resp, string(body)
+	return ClientResponse{HttpReposne: resp, Content: string(body) }
 }
 
 type Client struct {
@@ -44,14 +42,14 @@ func (cl Client) fullUrl(entityName, queryString string) string {
 	return fmt.Sprintf("%v?%v", queryString)
 }
 
-func (cl Client) get(entityName string, urlParams url.Values) (*http.Response, string) {
+func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
 	url := cl.fullUrl(entityName, urlParams.Encode())
 	resp, err := http.Get(url)
 	utils.HandleError(err)
 	return parseResp(resp)
 }
 
-func (cl Client) post(entityName string, values url.Values) (*http.Response, string) {
+func (cl Client) post(entityName string, values url.Values) ClientResponse {
 	fullRoute := cl.fullUrl(entityName, "")
 	resp, err := http.PostForm(fullRoute, values)
 	utils.HandleError(err)
@@ -69,8 +67,8 @@ func NewHttpsClient(host string, port int) Client {
 	return client
 }
 
-func (cl Client) GetHome() (*http.Response, string) {
-		return cl.get(grunts.EntityTypeHome, nil)
+func (cl Client) GetHome() ClientResponse {
+	return cl.get(grunts.EntityTypeHome, nil)
 }
 
 func GetWebApps() {
