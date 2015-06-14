@@ -59,7 +59,7 @@ func (wa WorkerApp) validate() error {
 	return nil
 }
 
-func (wa WorkerApp) FromString(data string) (types.Storable, error) {
+func (wa WorkerApp) FromString(data string, rc *types.RunContext) (types.Storable, error) {
 	wa = WorkerApp{}
 	utils.Unmarshall(data, wa)
 	err := wa.validate()

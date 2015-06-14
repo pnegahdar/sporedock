@@ -84,32 +84,41 @@ func (wa WebApp) validate(rc *types.RunContext) error {
 	if wa.ID == "" {
 		return ErrIDEmpty
 	}
-	if (GetWebapp(rc, wa.ID) != WebApp{}) {
-		return ErrIDExists
+	webapp, err := GetWebapp(rc, wa.ID)
+	if types.RewrapError(err) != types.ErrEmptyQuery {
+		if webapp.ID == wa.ID {
+			return ErrIDExists
+		}
 	}
+	return err
 }
 
 func (wa WebApp) FromString(data string, rc *types.RunContext) (types.Storable, error) {
 	wa = WebApp{}
-	utils.Unmarshall(data, wa)
+	utils.Unmarshall(data, &wa)
 	err := wa.validate(rc)
 	return wa, err
 }
 
-func GetAllWebApps(rc *types.RunContext) []WebApp {
+func GetAllWebApps(rc *types.RunContext) ([]WebApp, error) {
 	retType := WebApp{}
 	webapps := []WebApp{}
-	storables := rc.Store.GetAll(retType)
+	storables, err := rc.Store.GetAll(retType)
+	if err != nil {
+		return webapps, err
+	}
 	for _, storable := range storables {
 		webapps = append(webapps, storable.(WebApp))
 	}
-	return webapps
+	return webapps, nil
 }
 
-func GetWebapp(rc *types.RunContext, id string) {
-	ret := WebApp{ID: string}
-	storable := rc.Store.Get(ret)
-	webapp := storable.(WebApp)
-	return webapp
+func GetWebapp(rc *types.RunContext, id string) (WebApp, error) {
+	ret := WebApp{ID: id}
+	webapp, err := rc.Store.Get(ret)
+	if err != nil {
+		return ret, err
+	}
+	return webapp.(WebApp), nil
 
 }
