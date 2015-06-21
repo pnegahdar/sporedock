@@ -3,28 +3,30 @@ package client
 import (
 	"fmt"
 	"github.com/pnegahdar/sporedock/utils"
-	"github.com/pnegahdar/sporedock/grunts"
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/cluster"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"errors"
+	"strings"
 )
 
 
 type ClientResponse struct {
-	HttpReposne *http.Response
-	Content     string
+	HttpReposne       *http.Response
+	Content           string
+	SporeDockResponse types.Response
 }
 
-
-func parseError() {
-
-}
-
-func parseResp(resp *http.Response) (*http.Response, string) {
+func parseResp(resp *http.Response) ClientResponse {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.HandleError(err)
-	return ClientResponse{HttpReposne: resp, Content: string(body) }
+	cr := ClientResponse{HttpReposne: resp, Content: string(body), SporeDockResponse: types.Response{}}
+	err = utils.Unmarshall(cr.Content, &cr.SporeDockResponse)
+	utils.HandleError(err)
+	return cr
 }
 
 type Client struct {
@@ -35,7 +37,7 @@ type Client struct {
 }
 
 func (cl Client) fullUrl(entityName, queryString string) string {
-	noqs := fmt.Sprintf("%v://%v:%v/%v?%v", cl.Scheme, cl.Host, cl.Port, grunts.GetRoute(entityName))
+	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetRoute(entityName))
 	if queryString == "" {
 		return noqs
 	}
@@ -49,28 +51,53 @@ func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
 	return parseResp(resp)
 }
 
-func (cl Client) post(entityName string, values url.Values) ClientResponse {
+func (cl Client) postjson(entityName string, storable ...types.Storable) ClientResponse {
 	fullRoute := cl.fullUrl(entityName, "")
-	resp, err := http.PostForm(fullRoute, values)
+	reqObject := types.JsonRequest{Data: storable}
+	body, err := utils.Marshall(reqObject)
+	utils.HandleError(err)
+	resp, err := http.Post(fullRoute, "application/json", strings.NewReader(body))
 	utils.HandleError(err)
 	return parseResp(resp)
 }
 
-func NewClient(host string, port int) Client {
-	return Client{Host: host, Port: port, Scheme: "http", VersionPrefix: grunts.ApiPrefix}
+func NewClient(host string, port int) *Client {
+	return &Client{Host: host, Port: port, Scheme: "http", VersionPrefix: types.ApiPrefix}
 
 }
 
-func NewHttpsClient(host string, port int) Client {
+func NewHttpsClient(host string, port int) *Client {
 	client := NewClient(host, port)
 	client.Scheme = "https"
 	return client
 }
 
-func (cl Client) GetHome() ClientResponse {
-	return cl.get(grunts.EntityTypeHome, nil)
+func (cl Client) GetHome() (string, error) {
+	resp := cl.get(types.EntityTypeHome, nil)
+	if resp.SporeDockResponse.IsError() {
+		return "", errors.New(resp.SporeDockResponse.Error)
+	}
+	return resp.Content, nil
 }
 
-func GetWebApps() {
+func (cl Client) GetWebApps() ([]cluster.WebApp, error) {
+	webapps := []cluster.WebApp{}
+	resp := cl.get(types.EntityTypeWebapp, nil)
+	if resp.SporeDockResponse.IsError() {
+		return webapps, errors.New(resp.SporeDockResponse.Error)
 
+	}
+	toConvert := resp.SporeDockResponse.Data.([]interface{})
+	for _, wa := range (toConvert) {
+		webapps = append(webapps, wa.(cluster.WebApp))
+	}
+	return webapps, nil
+}
+
+func (cl Client) CreateWebApp(webapp cluster.WebApp) (cluster.WebApp, error){
+	resp := cl.postjson(types.EntityTypeWebapp, webapp)
+	if resp.SporeDockResponse.IsError(){
+		return webapp, errors.New(resp.SporeDockResponse.Error)
+	}
+	return webapp, nil
 }

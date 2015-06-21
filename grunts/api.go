@@ -8,22 +8,7 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
-	"strconv"
-	"path"
 )
-
-var ApiPrefix = "api/v1"
-var EntityTypeHome = ""
-var EntityTypeWebapp = "webapp"
-
-type successResponse struct {
-	Data interface{} `json:"data"`
-	Code string      `json:"code"`
-}
-
-type errorResponse struct {
-	Error map[string]string `json:"error"`
-}
 
 type Route struct {
 	Name        string
@@ -46,9 +31,7 @@ func (sa SporeAPI) ShouldRun(runContext types.RunContext) bool {
 	return true
 }
 
-func GetRoute(routeParts ...string) string{
-	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
-}
+
 
 func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 	sa.runContext = runContexnt
@@ -56,19 +39,19 @@ func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 		Route{
 			"Index",
 			"GET",
-			GetRoute(EntityTypeHome),
+			types.GetRoute(types.EntityTypeHome),
 			sa.Home,
 		},
 		Route{
 			"WebAppIndex",
 			"GET",
-			GetRoute(EntityTypeWebapp),
+			types.GetRoute(types.EntityTypeWebapp),
 			sa.WebAppsIndex,
 		},
 		Route{
 			"WebAppCreate",
 			"POST",
-			GetRoute(EntityTypeWebapp),
+			types.GetRoute(types.EntityTypeWebapp),
 			sa.WebAppCreate,
 		},
 	}
@@ -85,8 +68,7 @@ func jsonErrorResponse(w http.ResponseWriter, err interface{}) {
 	err_wrapped := types.RewrapError(err)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err_wrapped.Status)
-	error_body := map[string]string{"code": strconv.Itoa(err_wrapped.Status), "message": err_wrapped.Error.Error()}
-	json_string, marshall_err := utils.Marshall(errorResponse{Error: error_body})
+	json_string, marshall_err := utils.Marshall(types.Response{Error: err_wrapped.Error.Error(), StatusCode: err_wrapped.Status})
 	utils.HandleError(marshall_err)
 	fmt.Fprint(w, json_string)
 
@@ -97,10 +79,23 @@ func bodyString(r *http.Request) string {
 	return string(body)
 }
 
+func parseJsonRequest(body string) ([]interface{}, error){
+	request := types.JsonRequest{}
+	err := utils.Unmarshall(body, &request)
+	if err != nil{
+		return request.Data, types.ErrUnparsableRequest
+	}
+	reqItems, ok := request.Data.([]interface{})
+	if !ok{
+		return request.Data,
+	}
+
+}
+
 func jsonSuccessResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json_string, err := utils.Marshall(successResponse{Data: data, Code: strconv.Itoa(status)})
+	json_string, err := utils.Marshall(types.Response{Data: data, StatusCode: status})
 	utils.HandleError(err)
 	fmt.Fprint(w, json_string)
 
@@ -123,9 +118,9 @@ func (sa SporeAPI) WebAppsIndex(w http.ResponseWriter, r *http.Request) {
 func (sa SporeAPI) WebAppCreate(w http.ResponseWriter, r *http.Request) {
 	var webapp cluster.WebApp
 	storable, err := webapp.FromString(bodyString(r), sa.runContext)
-	webapp = storable.(cluster.WebApp)
-	fmt.Println(webapp)
 	if err != nil {
 		jsonErrorResponse(w, err)
 	}
+	webapp = storable.(cluster.WebApp)
+	fmt.Println(webapp)
 }

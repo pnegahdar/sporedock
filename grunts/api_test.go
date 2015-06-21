@@ -1,16 +1,16 @@
 package grunts
 
 import (
-	"fmt"
+// "fmt"
 	"github.com/pnegahdar/sporedock/client"
-	"github.com/pnegahdar/sporedock/cluster"
-	"github.com/pnegahdar/sporedock/utils"
-	"github.com/stretchr/testify/assert"
+// "github.com/pnegahdar/sporedock/utils"
 	"github.com/stretchr/testify/suite"
-	"net/url"
-	"os"
 	"testing"
+	"fmt"
+	"github.com/pnegahdar/sporedock/cluster"
 )
+
+var TestImage = "ubuntu"
 
 func handleTestError(t *testing.T, err error) {
 	if err != nil {
@@ -18,45 +18,45 @@ func handleTestError(t *testing.T, err error) {
 	}
 }
 
-func createTestClient() client.Client {
-	return  client.NewClient("localhost", 80)
+type ApiTestSuite struct {
+	suite.Suite
+	Client *client.Client
 }
 
-func TestMain(m *testing.M) {
+func (suite *ApiTestSuite) SetupSuite() {
 	go CreateAndRun()
-	os.Exit(m.Run())
+	suite.Client = client.NewClient("localhost", 5000)
 }
 
-type 
-
-func TestHome(t *testing.T) {
-	cr =
-	resp, content := testGet(t, EntityTypeHome, url.Values{})
-	assert.Equal(t, resp.StatusCode, 200, "Status code was not 200")
-	assert.Contains(t, content, "Welcome", "Welcome not found in home body.")
+func (suite *ApiTestSuite) TestHome() {
+	resp, err := suite.Client.GetHome()
+	suite.Nil(err)
+	suite.Contains(resp, "Welcome", "Welcome not found in home body.")
 }
 
-func TestNoWebapps(t *testing.T) {
-	resp, content := testGet(t, EntityTypeWebapp, url.Values{})
-	assert.Equal(t, resp.StatusCode, 200, "Status code was not 200")
-	sresp := successResponse{}
-	t.Log(content)
-	err := utils.Unmarshall(content, &sresp)
-	handleTestError(t, err)
-	webapps := []cluster.WebApp{}
-	toConvert := sresp.Data.([]interface{})
-	for _, wa := range toConvert {
-		webapps = append(webapps, wa.(cluster.WebApp))
-	}
-
+func (suite *ApiTestSuite) TestNoWebapps() {
+	webapps, err := suite.Client.GetWebApps()
+	suite.Nil(err)
 	fmt.Println(webapps)
-	assert.Equal(t, webapps, []cluster.WebApp{})
+	suite.Len(webapps, 0)
 }
 
-func TestCreateWebapp(t *testing.T) {
-	// Test No ID
-	resp, _ := testPost(t, EntityTypeWebapp, url.Values{})
-
-	assert.Equal(t, resp.StatusCode, 400)
-
+func (suite *ApiTestSuite) TestCreateWebapp(){
+	toCreate := cluster.NewWebApp("TESTWEBAPP", TestImage, 8000)
+	webapp, err := suite.Client.CreateWebApp(*toCreate)
+	suite.Nil(err)
+	suite.Equal(webapp, *toCreate)
 }
+
+func TestApiTestSuite(t *testing.T) {
+	suite.Run(t, new(ApiTestSuite))
+}
+
+
+// func TestCreateWebapp(t *testing.T) {
+// 	// Test No ID
+// 	resp, _ := testPost(t, EntityTypeWebapp, url.Values{})
+//
+// 	assert.Equal(t, resp.StatusCode, 400)
+//
+// }

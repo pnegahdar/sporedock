@@ -74,6 +74,12 @@ func (gr *GruntRegistry) Start(grunts ...Grunt) {
 	}
 }
 
+func NewGruntRegistry(rc *types.RunContext) *GruntRegistry{
+	grunts := make(map[string]Grunt)
+	runCount := make(map[string]int)
+	return &GruntRegistry{Context: rc, Grunts: grunts, runCount: runCount}
+}
+
 func CreateAndRun() {
 	connectionString := "redis://localhost:6379"
 	groupName := "testGroup"
@@ -88,8 +94,6 @@ func CreateAndRun() {
 	// Create Run Context
 	runContext := types.RunContext{MyMachineID: machineID, Store: store, MyIP: myIP, MyGroup: groupName}
 	// Register and run
-	grunts := make(map[string]Grunt)
-	runCount := make(map[string]int)
-	gruntRegistry := GruntRegistry{Context: &runContext, Grunts: grunts, runCount: runCount}
+	gruntRegistry := NewGruntRegistry(&runContext)
 	gruntRegistry.Start(store, api)
 }

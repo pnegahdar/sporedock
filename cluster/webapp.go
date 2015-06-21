@@ -16,11 +16,10 @@ type WebApp struct {
 	ID              string
 	Image           string
 	BalancedTCPPort int
-	Status          string
 }
 
 var (
-	ErrIDEmpty  = errors.New("Webapp ID cannot be empty.")
+	ErrIDEmpty = errors.New("Webapp ID cannot be empty.")
 	ErrIDExists = errors.New("Webapp with that ID already exists please delete and try again.")
 )
 
@@ -58,8 +57,8 @@ func (wa WebApp) Env() map[string]string {
 
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[string]struct{}{}
-	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct{}{}
+	exposedPorts := map[string]struct {}{}
+	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct {}{}
 	return dockerclient.ContainerConfig{
 		Env:          envsForDocker,
 		Image:        wa.Image,
@@ -81,7 +80,7 @@ func (wa WebApp) ToString() string {
 }
 
 func (wa WebApp) validate(rc *types.RunContext) error {
-	if wa.ID == "" {
+	if wa.ID == "" { // Todo(parham): address race condition
 		return ErrIDEmpty
 	}
 	webapp, err := GetWebapp(rc, wa.ID)
@@ -91,6 +90,15 @@ func (wa WebApp) validate(rc *types.RunContext) error {
 		}
 	}
 	return err
+}
+
+func NewWebApp(id string, image string, balancedTcpPort int) *WebApp {
+	return &WebApp{
+		ID: id,
+		Image: image,
+		BalancedTCPPort: balancedTcpPort,
+		Count: 1,
+	}
 }
 
 func (wa WebApp) FromString(data string, rc *types.RunContext) (types.Storable, error) {
