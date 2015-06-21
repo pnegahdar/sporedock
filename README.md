@@ -1,25 +1,10 @@
 SporeDock
-=========
+==========
 
 **Status**: Not Runable (Design Phase). WIP.
 
 SporeDock is an opinionated Docker orchestration tool that makes it easy to scale and distribute Docker apps on a multi-node/host cluster. There are lots of tools around Docker Orchestration right now (see: Deis, Flynn, Shipyard, etcd, Coreos, Fleet, Serf, Bob, vlucand, hipache, Dokku, Mesos, Mesosphere, etc) but figuring out which to use and making them work together is difficult. SporeDock makes those decisions for you.
 
-
-## Architecture
-
-SporeDock has 3 major components:
-
-  **Etcd** : Internode communication, Discovery, Process synchronization, Primary election
-
-  **Docker Client** : Managing Docker daemon
-
-  **vulcand** : Dynamic http load balancer
-
-
-  Together they give you a highly dynamic self-discovering deployment stack powered by docker.
-
- All the tools are written in Go to produce a single distributable binary that acts as both the server and client. Making cloud formations of these binaries are very easy.
 
 
 ## Interface

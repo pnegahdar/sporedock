@@ -2,8 +2,7 @@ package grunts
 
 import (
 	"fmt"
-
-	"github.com/pnegahdar/sporedock/cluster"
+	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"time"
@@ -11,23 +10,15 @@ import (
 
 const RestartDecaySeconds = 1
 
-type RunContext struct {
-	store       SporeStore
-	myMachineID string
-	myIP        net.IP
-	myType      cluster.SporeType
-	myGroup     string
-}
-
 type Grunt interface {
 	ProcName() string
-	Run(runContext *RunContext)
-	ShouldRun(runContext RunContext) bool
+	Run(runContext *types.RunContext)
+	ShouldRun(runContext types.RunContext) bool
 }
 
 type GruntRegistry struct {
 	Grunts   map[string]Grunt
-	Context  *RunContext
+	Context  *types.RunContext
 	runCount map[string]int
 	startMe  chan string
 }
@@ -83,22 +74,26 @@ func (gr *GruntRegistry) Start(grunts ...Grunt) {
 	}
 }
 
+func NewGruntRegistry(rc *types.RunContext) *GruntRegistry{
+	grunts := make(map[string]Grunt)
+	runCount := make(map[string]int)
+	return &GruntRegistry{Context: rc, Grunts: grunts, runCount: runCount}
+}
+
 func CreateAndRun() {
 	connectionString := "redis://localhost:6379"
 	groupName := "testGroup"
 	machineID := "myMachine"
 	myIP := net.ParseIP("127.0.0.1")
-	myType := cluster.TypeSporeMember
+	// myType := "leader"
 
 	// Initialize workers
 	store := CreateStore(connectionString, groupName)
-    api := SporeAPI{}
+	api := SporeAPI{}
 
 	// Create Run Context
-	runContext := RunContext{myMachineID: machineID, store: store, myIP: myIP, myType: myType, myGroup: groupName}
+	runContext := types.RunContext{MyMachineID: machineID, Store: store, MyIP: myIP, MyGroup: groupName}
 	// Register and run
-	grunts := make(map[string]Grunt)
-	runCount := make(map[string]int)
-	gruntRegistry := GruntRegistry{Context: &runContext, Grunts: grunts, runCount: runCount}
+	gruntRegistry := NewGruntRegistry(&runContext)
 	gruntRegistry.Start(store, api)
 }

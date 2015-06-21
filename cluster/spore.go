@@ -2,25 +2,18 @@ package cluster
 
 import (
 	"errors"
+	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 )
 
-type SporeType string
-
 var IPParseError = errors.New("The IP of the machine is not parsable as a standard IP.")
-
-const (
-	TypeSporeLeader  SporeType = "leader"
-	TypeSporeMember  SporeType = "member"
-	TypeSporeWatcher SporeType = "watcher"
-)
 
 type Spore struct {
 	Group      string
 	Name       string
 	MemberIP   string
-	MemberType SporeType
+	MemberType types.SporeType
 	Tags       map[string]string
 }
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/pnegahdar/sporedock/cluster"
+	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"strings"
@@ -18,31 +18,12 @@ const CheckinExpireMs = 3000
 const LeadershipCheckinMs = 3000
 const LeadershipExpireMs = 5000
 
-var ConnectionStringError = errors.New("Connection string must start with redis://")
-var ConnectionStringNotSetError = errors.New("Connection string not set.")
+// Which errors to pipe through to next layer (say web), which to panic on.
+var remapErrors = map[error]types.HttpError{redis.ErrNil: types.ErrEmptyQuery}
 
-var CurrentStore SporeStore
+var CurrentStore types.SporeStore
 
-type Storable interface {
-	TypeIdentifier() string
-	Identifier() string
-	ToString() string
-	FromString(data string) (Storable, error)
-}
-
-type SporeStore interface {
-	ProcName() string
-	ShouldRun(RunContext) bool
-	Get(item Storable) Storable
-	GetAll(retType Storable) []Storable
-	GetLog(retType Storable, limit int) []Storable
-	Set(item Storable)
-	SetLog(item Storable, logLength int)
-	Delete(item Storable)
-	Run(context *RunContext)
-}
-
-func CreateStore(connectionString, group string) SporeStore {
+func CreateStore(connectionString, group string) types.SporeStore {
 	if CurrentStore != nil {
 		return CurrentStore
 	}
@@ -50,7 +31,7 @@ func CreateStore(connectionString, group string) SporeStore {
 		CurrentStore = NewRedisStore(connectionString, group)
 		return CurrentStore
 	} else {
-		utils.HandleError(ConnectionStringError)
+		utils.HandleError(types.ErrConnectionString)
 		return nil
 	}
 }
@@ -61,21 +42,22 @@ type RedisStore struct {
 	group            string
 	myIP             net.IP
 	amLeader         bool
-	myType           cluster.SporeType
+	myType           types.SporeType
 	myMachineID      string
+	rc               *types.RunContext
 }
 
-var OneExitedError = errors.New("One of hte proceses exited")
+var OneExitedError = errors.New("One of the proceses exited")
 
-func (rs RedisStore) typeKey(storable Storable) string {
+func (rs RedisStore) typeKey(storable types.Storable) string {
 	return strings.Join([]string{"sporedock", rs.group, storable.TypeIdentifier()}, ":")
 }
 
-func (rs RedisStore) itemKey(storable Storable) string {
+func (rs RedisStore) itemKey(storable types.Storable) string {
 	return strings.Join([]string{rs.typeKey(storable), storable.Identifier(), "*"}, ":")
 }
 
-func (rs RedisStore) subItemKey(storable Storable, subitems ...string) string {
+func (rs RedisStore) subItemKey(storable types.Storable, subitems ...string) string {
 	items := []string{rs.itemKey(storable)}
 	for _, subitem := range subitems {
 		items = append(items, subitem)
@@ -87,7 +69,7 @@ func (rs RedisStore) leaderKey() string {
 	return strings.Join([]string{"sporedock", rs.group, "_redis", "_leader"}, ":")
 }
 
-func (rs RedisStore) logKey(storable Storable) string {
+func (rs RedisStore) logKey(storable types.Storable) string {
 	return fmt.Sprint("%v__log", rs.itemKey(storable))
 }
 
@@ -145,16 +127,17 @@ func newRedisConnPool(server string) *redis.Pool {
 	}
 }
 
-func (rs RedisStore) Run(context *RunContext) {
+func (rs *RedisStore) Run(context *types.RunContext) {
 	if rs.connectionString == "" {
-		utils.HandleError(ConnectionStringNotSetError)
+		utils.HandleError(types.ErrConnectionStringNotSet)
 	}
 	// Todo: Connection pool
-	rs.group = context.myGroup
-	rs.myIP = context.myIP
-	rs.myType = context.myType
-	rs.myMachineID = context.myMachineID
+	rs.group = context.MyGroup
+	rs.myIP = context.MyIP
+	rs.myType = context.MyType
+	rs.myMachineID = context.MyMachineID
 	rs.connPool = newRedisConnPool(rs.connectionString)
+	rs.rc = context
 	// Todo: better proc management here
 	// All or none WG Group
 	wg := sync.WaitGroup{}
@@ -165,15 +148,19 @@ func (rs RedisStore) Run(context *RunContext) {
 	utils.HandleError(OneExitedError)
 }
 
-func (rs RedisStore) Get(retType Storable) Storable {
+func (rs RedisStore) Get(retType types.Storable) (types.Storable, error) {
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	resp, err := conn.Do("GET", rs.itemKey(retType))
 	data, err := redis.String(resp, err)
-	utils.HandleError(err)
-	obj, err := retType.FromString(data)
-	utils.HandleError(err)
-	return obj
+	if err != nil {
+		return nil, err
+	}
+	obj, err := retType.FromString(data, rs.rc)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 
 }
 
@@ -181,13 +168,15 @@ func (rs RedisStore) ProcName() string {
 	return "RedisStore"
 }
 
-func (rs RedisStore) GetAll(retType Storable) []Storable {
+func (rs RedisStore) GetAll(retType types.Storable) ([]types.Storable, error) {
 	// Todo: Switch to hash table as this is slow
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	resp, err := conn.Do("KEYS", rs.typeKey(retType))
 	keys, err := redis.Strings(resp, err)
-	utils.HandleError(err)
+	if err != nil {
+		return nil, err
+	}
 
 	conn.Send("MULTI")
 	for _, key := range keys {
@@ -195,65 +184,78 @@ func (rs RedisStore) GetAll(retType Storable) []Storable {
 	}
 	resp, err = conn.Do("EXEC")
 	data, err := redis.Strings(resp, err)
-	utils.HandleError(err)
-
-	storables := []Storable{}
-	for _, storable := range data {
-		obj, err := retType.FromString(storable)
-		utils.HandleError(err)
+	if err != nil {
+		return nil, err
+	}
+	storables := []types.Storable{}
+	for _, storableString := range data {
+		obj, err := retType.FromString(storableString, rs.rc)
+		if err != nil {
+			utils.LogWarn(fmt.Sprintf("Was unable to parse from DB item %v. Please delete or fix. Skipping for now. Body: %v", rs.typeKey(retType), storableString))
+			continue
+		}
 		storables = append(storables, obj)
 	}
-	return storables
+	return storables, nil
 }
 
-func (rs RedisStore) GetLog(retType Storable, limit int) []Storable {
+func (rs RedisStore) GetLog(retType types.Storable, limit int) ([]types.Storable, error) {
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	resp, err := conn.Do("LRANGE", rs.typeKey(retType), 0, limit)
 	data, err := redis.Strings(resp, err)
-	utils.HandleError(err)
-	storables := []Storable{}
-	for _, item := range data {
-		obj, err := retType.FromString(item)
-		utils.HandleError(err)
+	if err != nil {
+		return nil, err
+	}
+	storables := []types.Storable{}
+	for _, storableString := range data {
+		obj, err := retType.FromString(storableString, rs.rc)
+		if err != nil {
+			utils.LogWarn(fmt.Sprintf("Was unable to parse from DB item %v. Please delete or fix. Skipping for now. Body: %v", rs.typeKey(retType), storableString))
+			continue
+		}
 		storables = append(storables, obj)
 	}
-	return storables
+	return storables, nil
 }
 
-func (rs RedisStore) Set(item Storable) {
+func (rs RedisStore) Set(item types.Storable) error {
 	key := rs.itemKey(item)
 	data := item.ToString()
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	_, err := conn.Do("SET", key, data)
-	utils.HandleError(err)
+	return err
 }
 
-func (rs RedisStore) SetLog(item Storable, logLength int) {
-	rs.Set(item)
+func (rs RedisStore) SetLog(item types.Storable, logLength int) error {
+	err := rs.Set(item)
+	if err != nil {
+		return err
+	}
 	logKey := fmt.Sprint("%v__log", rs.itemKey(item))
 	conn := rs.connPool.Get()
 	defer conn.Close()
-	_, err := conn.Do("LPUSH", logKey, item.ToString())
-	utils.HandleError(err)
+	_, err = conn.Do("LPUSH", logKey, item.ToString())
+	if err != nil {
+		return err
+	}
 	_, err = conn.Do("LTRIM", logKey, 0, logLength)
-	utils.HandleError(err)
+	return err
 }
 
-func (rs RedisStore) Delete(item Storable) {
+func (rs RedisStore) Delete(item types.Storable) error {
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	_, err := conn.Do("DEL", rs.itemKey(item))
-	utils.HandleError(err)
-
+	return err
 }
 
-func (rs RedisStore) ShouldRun(context RunContext) bool {
+func (rs RedisStore) ShouldRun(context types.RunContext) bool {
 	return true
 }
 
-func NewRedisStore(redisConnecitonURI, group string) RedisStore {
+func NewRedisStore(redisConnecitonURI, group string) types.SporeStore {
 	redisConnecitonURI = strings.TrimPrefix(redisConnecitonURI, "redis://")
-	return RedisStore{connectionString: redisConnecitonURI, group: group}
+	return &RedisStore{connectionString: redisConnecitonURI, group: group}
 }
