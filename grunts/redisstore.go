@@ -18,9 +18,6 @@ const CheckinExpireMs = 3000
 const LeadershipCheckinMs = 3000
 const LeadershipExpireMs = 5000
 
-// Which errors to pipe through to next layer (say web), which to panic on.
-var remapErrors = map[error]types.HttpError{redis.ErrNil: types.ErrEmptyQuery}
-
 var CurrentStore types.SporeStore
 
 func CreateStore(connectionString, group string) types.SporeStore {
@@ -34,6 +31,16 @@ func CreateStore(connectionString, group string) types.SporeStore {
 		utils.HandleError(types.ErrConnectionString)
 		return nil
 	}
+}
+
+var knownErrors = map[error]error{redis.ErrNil : types.ErrNoneFound}
+
+func wrapError(err error) error{
+	rewrap, ok := knownErrors[err]
+	if ok {
+		return rewrap
+	}
+	return err
 }
 
 type RedisStore struct {
@@ -86,6 +93,7 @@ func (rs RedisStore) runLeaderElection(wg sync.WaitGroup) {
 		utils.HandleErrorWG(err, wg)
 		resp, err := redis.Int(reply, nil)
 		utils.HandleError(err)
+		// Todo: what if this fails
 		if resp == 1 {
 			_, err := conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
 			utils.HandleErrorWG(err, wg)
@@ -154,11 +162,11 @@ func (rs RedisStore) Get(retType types.Storable) (types.Storable, error) {
 	resp, err := conn.Do("GET", rs.itemKey(retType))
 	data, err := redis.String(resp, err)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	obj, err := retType.FromString(data, rs.rc)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	return obj, nil
 
@@ -175,7 +183,7 @@ func (rs RedisStore) GetAll(retType types.Storable) ([]types.Storable, error) {
 	resp, err := conn.Do("KEYS", rs.typeKey(retType))
 	keys, err := redis.Strings(resp, err)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 
 	conn.Send("MULTI")
@@ -185,7 +193,7 @@ func (rs RedisStore) GetAll(retType types.Storable) ([]types.Storable, error) {
 	resp, err = conn.Do("EXEC")
 	data, err := redis.Strings(resp, err)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	storables := []types.Storable{}
 	for _, storableString := range data {
@@ -205,7 +213,7 @@ func (rs RedisStore) GetLog(retType types.Storable, limit int) ([]types.Storable
 	resp, err := conn.Do("LRANGE", rs.typeKey(retType), 0, limit)
 	data, err := redis.Strings(resp, err)
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	storables := []types.Storable{}
 	for _, storableString := range data {
@@ -225,30 +233,30 @@ func (rs RedisStore) Set(item types.Storable) error {
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	_, err := conn.Do("SET", key, data)
-	return err
+	return wrapError(err)
 }
 
 func (rs RedisStore) SetLog(item types.Storable, logLength int) error {
 	err := rs.Set(item)
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	logKey := fmt.Sprint("%v__log", rs.itemKey(item))
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	_, err = conn.Do("LPUSH", logKey, item.ToString())
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	_, err = conn.Do("LTRIM", logKey, 0, logLength)
-	return err
+	return wrapError(err)
 }
 
 func (rs RedisStore) Delete(item types.Storable) error {
 	conn := rs.connPool.Get()
 	defer conn.Close()
 	_, err := conn.Do("DEL", rs.itemKey(item))
-	return err
+	return wrapError(err)
 }
 
 func (rs RedisStore) ShouldRun(context types.RunContext) bool {

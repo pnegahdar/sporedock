@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"errors"
 	"fmt"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
@@ -17,11 +16,6 @@ type WebApp struct {
 	Image           string
 	BalancedTCPPort int
 }
-
-var (
-	ErrIDEmpty = errors.New("Webapp ID cannot be empty.")
-	ErrIDExists = errors.New("Webapp with that ID already exists please delete and try again.")
-)
 
 func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
 	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.Image)
@@ -79,17 +73,20 @@ func (wa WebApp) ToString() string {
 	return resp
 }
 
-func (wa WebApp) validate(rc *types.RunContext) error {
-	if wa.ID == "" { // Todo(parham): address race condition
-		return ErrIDEmpty
+func validateWebapp(rc *types.RunContext, app *WebApp) error {
+	if app.ID == "" { // Todo(parham): address race condition
+		return types.ErrIDEmpty
 	}
-	webapp, err := GetWebapp(rc, wa.ID)
-	if types.RewrapError(err) != types.ErrEmptyQuery {
-		if webapp.ID == wa.ID {
-			return ErrIDExists
-		}
+	_ = "breakpoint"
+	webapp, err := GetWebapp(rc, app.ID)
+	emptyWebapp := WebApp{}
+	if (webapp != emptyWebapp){
+		return types.ErrIDExists
 	}
-	return err
+	if err.Error() != types.ErrEmptyQuery.Error() {
+		return err
+	}
+	return nil
 }
 
 func NewWebApp(id string, image string, balancedTcpPort int) *WebApp {
@@ -104,7 +101,7 @@ func NewWebApp(id string, image string, balancedTcpPort int) *WebApp {
 func (wa WebApp) FromString(data string, rc *types.RunContext) (types.Storable, error) {
 	wa = WebApp{}
 	utils.Unmarshall(data, &wa)
-	err := wa.validate(rc)
+	err := validateWebapp(rc, &wa)
 	return wa, err
 }
 

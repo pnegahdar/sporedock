@@ -51,9 +51,9 @@ func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
 	return parseResp(resp)
 }
 
-func (cl Client) postjson(entityName string, storable ...types.Storable) ClientResponse {
+func (cl Client) postjson(entityName string, storable types.Storable) ClientResponse{
 	fullRoute := cl.fullUrl(entityName, "")
-	reqObject := types.JsonRequest{Data: storable}
+	reqObject := types.JsonRequest{Data: storable.ToString()}
 	body, err := utils.Marshall(reqObject)
 	utils.HandleError(err)
 	resp, err := http.Post(fullRoute, "application/json", strings.NewReader(body))

@@ -64,11 +64,10 @@ func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 	utils.HandleError(err)
 }
 
-func jsonErrorResponse(w http.ResponseWriter, err interface{}) {
-	err_wrapped := types.RewrapError(err)
+func jsonErrorResponse(w http.ResponseWriter, err error)  {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(err_wrapped.Status)
-	json_string, marshall_err := utils.Marshall(types.Response{Error: err_wrapped.Error.Error(), StatusCode: err_wrapped.Status})
+	w.WriteHeader(400)
+	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: 400})
 	utils.HandleError(marshall_err)
 	fmt.Fprint(w, json_string)
 
@@ -79,16 +78,13 @@ func bodyString(r *http.Request) string {
 	return string(body)
 }
 
-func parseJsonRequest(body string) ([]interface{}, error){
+func datafromJsonRequest(body string) (string,  error){
 	request := types.JsonRequest{}
 	err := utils.Unmarshall(body, &request)
 	if err != nil{
 		return request.Data, types.ErrUnparsableRequest
 	}
-	reqItems, ok := request.Data.([]interface{})
-	if !ok{
-		return request.Data,
-	}
+	return request.Data, nil
 
 }
 
@@ -117,10 +113,17 @@ func (sa SporeAPI) WebAppsIndex(w http.ResponseWriter, r *http.Request) {
 
 func (sa SporeAPI) WebAppCreate(w http.ResponseWriter, r *http.Request) {
 	var webapp cluster.WebApp
-	storable, err := webapp.FromString(bodyString(r), sa.runContext)
+	data, err := datafromJsonRequest(bodyString(r))
 	if err != nil {
 		jsonErrorResponse(w, err)
+		return
+	}
+	storable, err := webapp.FromString(data, sa.runContext)
+	if err != nil{
+		jsonErrorResponse(w, err)
+		return
 	}
 	webapp = storable.(cluster.WebApp)
-	fmt.Println(webapp)
+	jsonSuccessResponse(w, 200, webapp)
+	return
 }

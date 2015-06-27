@@ -18,23 +18,11 @@ type HttpError struct {
 	Error  error
 }
 
-func RewrapError(err interface{}) HttpError {
-	switch err.(type) {
-	case HttpError:
-		return err.(HttpError)
-	case error:
-		// Return all other errors as a 400 bad request
-		return HttpError{Status: 400, Error: err.(error)}
-	default:
-		panic("Unknown error type returned")
-	}
-}
-
 var ErrConnectionString = errors.New("Connection string must start with redis://")
 var ErrConnectionStringNotSet = errors.New("Connection string not set.")
 
 // HTTP status errors
-var ErrEmptyQuery = HttpError{Status: 404, Error: errors.New("No results found.")}
+var ErrEmptyQuery = errors.New("No results found.")
 
 type SporeStore interface {
 	ProcName() string
