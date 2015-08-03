@@ -3,7 +3,6 @@ package cluster
 import (
 	"errors"
 	"github.com/pnegahdar/sporedock/types"
-	"github.com/pnegahdar/sporedock/utils"
 	"net"
 )
 
@@ -17,33 +16,12 @@ type Spore struct {
 	Tags       map[string]string
 }
 
-func (s Spore) TypeIdentifier() string {
-	return "spore"
-}
-
-func (s Spore) Identifier() string {
-	return s.Name
-}
-
-func (s Spore) ToString() string {
-	data, err := utils.Marshall(s)
-	utils.HandleError(err)
-	return data
-}
-
-func (s Spore) validate() error {
+func (s Spore) Validate() error {
 	ok := net.ParseIP(s.MemberIP)
 	if ok == nil {
 		return IPParseError
 	}
 	return nil
-}
-
-func (s Spore) FromString(data string) (Spore, error) {
-	s = Spore{}
-	utils.Unmarshall(data, &s)
-	err := s.validate()
-	return s, err
 }
 
 //func Members(rc grunts.RunContext) []Spore {

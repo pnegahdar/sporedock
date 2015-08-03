@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"io"
+	"strings"
 )
 
 func Marshall(i interface{}) (string, error) {
@@ -27,4 +28,8 @@ func UnmarshalReader(data io.Reader, i interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func JsonListFromObjects(objects ...string) string {
+	return "[" + strings.Join(objects, ", ") + "]"
 }

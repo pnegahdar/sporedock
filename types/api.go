@@ -1,8 +1,9 @@
 package types
+
 import (
-	"path"
-	"fmt"
 	"errors"
+	"fmt"
+	"path"
 )
 
 var ApiPrefix = "api/v1"
@@ -14,25 +15,21 @@ var ErrNoneFound = errors.New("Results returned empty")
 var ErrIDEmpty = errors.New("ID cannot be empty.")
 var ErrIDExists = errors.New("Object with that ID already exists please delete and try again.")
 
-func GetRoute(routeParts ...string) string{
+func GetRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
 }
 
 type Response struct {
-	Data interface {} `json:data`
-	Error string `json:error`
-	StatusCode int `json:code`
-
+	Data       interface{} `json:data`
+	Error      string      `json:error`
+	StatusCode int         `json:code`
 }
 
 type JsonRequest struct {
 	Data string `json:data`
 }
 
-func (rs Response) IsError() bool{
+func (rs Response) IsError() bool {
 	return rs.Error != "" || rs.StatusCode >= 400
 
 }
-
-
-

@@ -6,8 +6,10 @@ import (
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
+	"gopkg.in/tylerb/graceful.v1"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type Route struct {
@@ -21,17 +23,16 @@ type Routes []Route
 
 type SporeAPI struct {
 	runContext *types.RunContext
+	stopCast   utils.SignalCast
 }
 
 func (sa SporeAPI) ProcName() string {
 	return "SporeAPI"
 }
 
-func (sa SporeAPI) ShouldRun(runContext types.RunContext) bool {
+func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
-
-
 
 func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 	sa.runContext = runContexnt
@@ -60,11 +61,23 @@ func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 	for _, route := range routes {
 		router.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
 	}
-	err := http.ListenAndServe(":5000", router)
-	utils.HandleError(err)
+	srv := &graceful.Server{
+		Timeout: 10 * time.Second,
+		Server:  &http.Server{Addr: ":5000", Handler: router},
+	}
+	go func() {
+		err := srv.ListenAndServe()
+		utils.HandleError(err)
+	}()
+	<-sa.stopCast.Listen()
+	srv.Stop(0)
 }
 
-func jsonErrorResponse(w http.ResponseWriter, err error)  {
+func (sa SporeAPI) Stop() {
+	sa.stopCast.Signal()
+}
+
+func jsonErrorResponse(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: 400})
@@ -78,10 +91,10 @@ func bodyString(r *http.Request) string {
 	return string(body)
 }
 
-func datafromJsonRequest(body string) (string,  error){
+func datafromJsonRequest(body string) (string, error) {
 	request := types.JsonRequest{}
 	err := utils.Unmarshall(body, &request)
-	if err != nil{
+	if err != nil {
 		return request.Data, types.ErrUnparsableRequest
 	}
 	return request.Data, nil
@@ -112,18 +125,22 @@ func (sa SporeAPI) WebAppsIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sa SporeAPI) WebAppCreate(w http.ResponseWriter, r *http.Request) {
-	var webapp cluster.WebApp
 	data, err := datafromJsonRequest(bodyString(r))
 	if err != nil {
 		jsonErrorResponse(w, err)
 		return
 	}
-	storable, err := webapp.FromString(data, sa.runContext)
-	if err != nil{
+	webapp := &cluster.WebApp{}
+	err = utils.Unmarshall(data, webapp)
+	if err != nil {
 		jsonErrorResponse(w, err)
 		return
 	}
-	webapp = storable.(cluster.WebApp)
+	sa.runContext.Store.Set(webapp, webapp.ID, -1)
+	if err != nil {
+		jsonErrorResponse(w, err)
+		return
+	}
 	jsonSuccessResponse(w, 200, webapp)
 	return
 }

@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 )
@@ -41,27 +40,6 @@ func (wa WorkerApp) Image() string {
 	return wa.image
 }
 
-func (wa WorkerApp) Identifier() string {
-	return wa.ID
-}
-
-func (wa WorkerApp) TypeIdentifier() string {
-	return "workerapp"
-}
-
-func (wa WorkerApp) ToString() string {
-	resp, err := utils.Marshall(wa)
-	utils.HandleError(err)
-	return resp
-}
-
-func (wa WorkerApp) validate() error {
+func (wa WorkerApp) Validate() error {
 	return nil
-}
-
-func (wa WorkerApp) FromString(data string, rc *types.RunContext) (types.Storable, error) {
-	wa = WorkerApp{}
-	utils.Unmarshall(data, wa)
-	err := wa.validate()
-	return wa, err
 }
