@@ -40,8 +40,8 @@ func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
 
-func (sa SporeAPI) Run(runContexnt *types.RunContext) {
-	sa.runContext = runContexnt
+func (sa SporeAPI) Run(runContext *types.RunContext) {
+	sa.runContext = runContext
 	routes := Routes{
 		Route{
 			"Index",
