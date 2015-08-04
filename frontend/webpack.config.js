@@ -18,8 +18,9 @@ module.exports = {
   },
   module: {
     loaders: [
-      { test: /\.js$/, loaders: ['babel'], exclude: /node_modules/ },
-      { test: /\.scss?$/, loaders: ['style', 'css', 'sass'], exclude: /node_modules/ }
+      { test: /\.js$/, loaders: ['babel?stage=0'], exclude: /node_modules/ },
+      { test: /\.scss$/, loaders: ['style', 'css', 'sass'], exclude: /node_modules/ },
+      { test: /\.css$/, loaders: ['style', 'css'], exclude: /node_modules/ }
     ]
   }
 };
