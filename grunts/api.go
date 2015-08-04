@@ -21,7 +21,7 @@ type Route struct {
 
 type Routes []Route
 
-var typeMap = map[string]types.AutoSavable{
+var typeMap = map[string]interface{}{
 	types.EntityTypeWebapp : cluster.WebApp{}}
 
 var typeMapSlice = map[string]interface{}{
@@ -156,7 +156,7 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
-	err = genericType.Validate()
+	err = nil // Todo(parham): call validate method here.
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
