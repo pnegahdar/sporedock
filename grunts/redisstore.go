@@ -72,9 +72,9 @@ func (rs RedisStore) runLeaderElection() {
 		select {
 		case <-time.After(checkinDur):
 			conn := rs.GetConn()
-			defer conn.Close()
 			_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipCheckinMs)
 			utils.HandleError(err)
+			conn.Close()
 		// Todo: what if this fails
 		case <-stopChan:
 			return
@@ -91,9 +91,9 @@ func (rs *RedisStore) runCheckIn() {
 		select {
 		case <-time.After(checkinDur):
 			conn := rs.GetConn()
-			defer conn.Close()
 			_, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
 			utils.HandleError(err)
+			conn.Close()
 		case <-stopChan:
 			return
 		}

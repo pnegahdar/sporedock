@@ -33,6 +33,11 @@ type Grunt interface {
 
 const SentinelEnd = -1
 
+
+type Creatable interface{
+	Create(*RunContext, string) (interface{}, error)
+}
+
 type SporeStore interface {
 	Grunt
 	Get(i interface{}, id string) error
@@ -59,14 +64,10 @@ type TypeMeta struct {
 func NewMeta(v interface{}) (TypeMeta, error) {
 	typeof := reflect.TypeOf(v)
 	kind := typeof.Kind()
-	fmt.Println(kind)
-	fmt.Println(typeof)
 	if kind == reflect.Ptr {
 		typeof = reflect.ValueOf(v).Elem().Type()
 		kind = typeof.Kind()
 	}
-	fmt.Println(kind)
-	fmt.Println(typeof)
 
 	switch kind {
 	case reflect.Slice:

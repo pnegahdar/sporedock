@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
+	"github.com/pnegahdar/sporedock/types"
 )
 
 type WebApp struct {
@@ -50,8 +51,8 @@ func (wa WebApp) Env() map[string]string {
 
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[string]struct{}{}
-	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct{}{}
+	exposedPorts := map[string]struct {}{}
+	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedTCPPort)] = struct {}{}
 	return dockerclient.ContainerConfig{
 		Env:          envsForDocker,
 		Image:        wa.Image,
@@ -60,4 +61,22 @@ func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 
 func (wa *WebApp) Validate() error {
 	return nil
+}
+
+func (wa WebApp) Create(rc *types.RunContext, data string) (interface{}, error) {
+	genericType := &WebApp{}
+	err := utils.Unmarshall(data, &genericType)
+	if err != nil {
+		return nil, err
+	}
+	err = wa.Validate() // Todo(parham): call validate method here.
+	if err != nil {
+		return nil, err
+	}
+	rc.Store.Set(genericType, genericType.ID, -1)
+	if err != nil {
+		return nil, err
+	}
+	return genericType, nil
+
 }

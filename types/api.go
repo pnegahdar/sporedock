@@ -7,6 +7,7 @@ import (
 )
 
 var ApiPrefix = "api/v1"
+var ApiPrefix = "dashboard/v1"
 var EntityTypeHome = ""
 var EntityTypeWebapp = "webapp"
 
@@ -16,10 +17,12 @@ var ErrNotFound = errors.New("Not found")
 var ErrIDEmpty = errors.New("ID cannot be empty.")
 var ErrIDExists = errors.New("Object with that ID already exists please delete and try again.")
 
-func GetRoute(routeParts ...string) string {
+func GetApiRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
 }
-
+func GetDashboardRoute(routeParts ...string) string {
+	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
+}
 type Response struct {
 	Data       interface{} `json:data`
 	Error      string      `json:error`

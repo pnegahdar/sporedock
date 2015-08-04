@@ -30,6 +30,8 @@ func (sa SporeAPI) ProcName() string {
 	return "SporeAPI"
 }
 
+var typeMap = map[string]types.Creatable{"webapp" : cluster.WebApp{}}
+
 func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
@@ -37,22 +39,31 @@ func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 func (sa SporeAPI) Run(runContext *types.RunContext) {
 	sa.runContext = runContext
 	routes := Routes{
+		// API
 		Route{
 			"Index",
 			"GET",
-			types.GetRoute(types.EntityTypeHome),
+			types.GetApiRoute(types.EntityTypeHome),
 			sa.Home,
 		},
 		Route{
 			"GenericTypeIndex",
 			"GET",
-			types.GetRoute("gen", "{type}"),
+			types.GetApiRoute("gen", "{type}"),
 			sa.GenericTypeIndex,
 		},
 		Route{
 			"GenericTypeCreate",
 			"POST",
-			types.GetRoute("gen", "{type}", "{id}"),
+			types.GetApiRoute("gen", "{type}"),
+			sa.GenericTypeCreate,
+		},
+
+		// Dash
+		Route{
+			"StaticFiles",
+			"GET",
+			types.GetDashboardRoute("static", "{name}"),
 			sa.GenericTypeCreate,
 		},
 	}
@@ -137,34 +148,21 @@ func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
-	typeID := vars["id"]
-	switch genericTypeID {
-	case "webapp":
-		genericType := &cluster.WebApp{}
-		data, err := datafromJsonRequest(bodyString(r))
-		if err != nil {
-			jsonErrorResponse(w, err, 400)
-			return
-		}
-		err = utils.Unmarshall(data, &genericType)
-		if err != nil {
-			jsonErrorResponse(w, err, 400)
-			return
-		}
-		err = nil // Todo(parham): call validate method here.
-		if err != nil {
-			jsonErrorResponse(w, err, 400)
-			return
-		}
-		sa.runContext.Store.Set(genericType, typeID, -1)
-		if err != nil {
-			jsonErrorResponse(w, err, 400)
-			return
-		}
-		jsonSuccessResponse(w, 200, genericType)
-		return
-	default:
+	data, err := datafromJsonRequest(bodyString(r))
+	creatable, ok := typeMap[genericTypeID]
+	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
+	created, err := creatable.Create(sa.runContext, data)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	jsonSuccessResponse(w, 200, created)
+	return
+}
+
+func (sa SporeAPI) StaticFiles(w http.ResponseWriter, r *http.Request){
+
 }
