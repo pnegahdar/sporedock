@@ -53,7 +53,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 			}
 			gr.startMe <- gruntName
 		}()
-		utils.LogInfo(fmt.Sprintf("Running grunt %v", gruntName))
+		utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
 		grunt.Run(gr.Context)
 	case <-stopChan:
 		return

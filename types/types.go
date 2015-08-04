@@ -43,10 +43,6 @@ type SporeStore interface {
 	DeleteAll(v interface{}) error
 }
 
-type AutoSavable interface {
-	Validate() error
-}
-
 type RunContext struct {
 	Store       SporeStore
 	MyMachineID string
@@ -63,10 +59,15 @@ type TypeMeta struct {
 func NewMeta(v interface{}) (TypeMeta, error) {
 	typeof := reflect.TypeOf(v)
 	kind := typeof.Kind()
+	fmt.Println(kind)
+	fmt.Println(typeof)
 	if kind == reflect.Ptr {
 		typeof = reflect.ValueOf(v).Elem().Type()
 		kind = typeof.Kind()
 	}
+	fmt.Println(kind)
+	fmt.Println(typeof)
+
 	switch kind {
 	case reflect.Slice:
 		meta := TypeMeta{IsStruct: true, TypeName: fmt.Sprint(typeof.Elem())}

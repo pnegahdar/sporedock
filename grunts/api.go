@@ -21,12 +21,6 @@ type Route struct {
 
 type Routes []Route
 
-var typeMap = map[string]interface{}{
-	types.EntityTypeWebapp : cluster.WebApp{}}
-
-var typeMapSlice = map[string]interface{}{
-	types.EntityTypeWebapp : []cluster.WebApp{}}
-
 type SporeAPI struct {
 	runContext *types.RunContext
 	stopCast   utils.SignalCast
@@ -56,7 +50,7 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 			sa.GenericTypeIndex,
 		},
 		Route{
-			"WebAppCreate",
+			"GenericTypeCreate",
 			"POST",
 			types.GetRoute("gen", "{type}", "{id}"),
 			sa.GenericTypeCreate,
@@ -124,16 +118,19 @@ func (sa SporeAPI) Home(w http.ResponseWriter, r *http.Request) {
 func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
-	genericType, ok := typeMapSlice[genericTypeID]
-	if !ok {
+	switch genericTypeID {
+	case "webapp":
+		genericType := []cluster.WebApp{}
+		err := sa.runContext.Store.GetAll(&genericType, 0, types.SentinelEnd)
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+		} else {
+			jsonSuccessResponse(w, 200, genericType)
+		}
+		return
+	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
-	}
-	err := sa.runContext.Store.GetAll(genericType, 0, types.SentinelEnd)
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-	} else {
-		jsonSuccessResponse(w, 200, genericType)
 	}
 }
 
@@ -141,31 +138,33 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	typeID := vars["id"]
-	genericType, ok := typeMap[genericTypeID]
-	if !ok {
+	switch genericTypeID {
+	case "webapp":
+		genericType := &cluster.WebApp{}
+		data, err := datafromJsonRequest(bodyString(r))
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		err = utils.Unmarshall(data, &genericType)
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		err = nil // Todo(parham): call validate method here.
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		sa.runContext.Store.Set(genericType, typeID, -1)
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		jsonSuccessResponse(w, 200, genericType)
+		return
+	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	data, err := datafromJsonRequest(bodyString(r))
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	err = utils.Unmarshall(data, genericType)
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	err = nil // Todo(parham): call validate method here.
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	sa.runContext.Store.Set(genericType, typeID, -1)
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	jsonSuccessResponse(w, 200, genericType)
-	return
 }

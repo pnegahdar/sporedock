@@ -58,6 +58,6 @@ func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 		ExposedPorts: exposedPorts}
 }
 
-func (wa *WebApp) Validate() error{
+func (wa *WebApp) Validate() error {
 	return nil
 }
