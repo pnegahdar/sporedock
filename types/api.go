@@ -7,7 +7,7 @@ import (
 )
 
 var ApiPrefix = "api/v1"
-var ApiPrefix = "dashboard/v1"
+var DashPrefix = "dashboard/v1"
 var EntityTypeHome = ""
 var EntityTypeWebapp = "webapp"
 
@@ -21,7 +21,7 @@ func GetApiRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
 }
 func GetDashboardRoute(routeParts ...string) string {
-	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
+	return fmt.Sprintf("/%v/%v", DashPrefix, path.Join(routeParts...))
 }
 type Response struct {
 	Data       interface{} `json:data`

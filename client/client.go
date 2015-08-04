@@ -36,7 +36,7 @@ type Client struct {
 }
 
 func (cl Client) fullUrl(entityName, queryString string) string {
-	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetRoute(entityName))
+	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetApiRoute(entityName))
 	if queryString == "" {
 		return noqs
 	}

@@ -10,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"runtime"
+	"path"
 )
 
 type Route struct {
@@ -20,6 +22,19 @@ type Route struct {
 }
 
 type Routes []Route
+
+func frontendDir() string{
+	_, filename, _, _ := runtime.Caller(1)
+	return path.Join(path.Dir(filename), "../frontend")
+}
+
+func frontendSubDir(addon...string) string{
+	parts := []string{frontendDir()}
+	for _, v := range(addon){
+		parts = append(parts, v)
+	}
+	return path.Join(parts...)
+}
 
 type SporeAPI struct {
 	runContext *types.RunContext
@@ -58,20 +73,20 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 			types.GetApiRoute("gen", "{type}"),
 			sa.GenericTypeCreate,
 		},
-
-		// Dash
-		Route{
-			"StaticFiles",
-			"GET",
-			types.GetDashboardRoute("static", "{name}"),
-			sa.GenericTypeCreate,
-		},
 	}
-	router := mux.NewRouter().StrictSlash(false)
-	// Register routes
+	router := mux.NewRouter()
+	// Register API routes
 	for _, route := range routes {
 		router.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
 	}
+	// Dash Routes
+	staticRoute := types.GetDashboardRoute("static")
+	staticHandler := http.StripPrefix(staticRoute, http.FileServer(http.Dir(frontendSubDir("static"))))
+	router.Methods("GET").PathPrefix(staticRoute).Name("DashboardStaticFiles").Handler(staticHandler)
+	router.Methods("GET").PathPrefix(types.GetDashboardRoute()).Name("DashboardIndex").HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, frontendSubDir("index.html"))
+		})
 	srv := &graceful.Server{
 		Timeout: 10 * time.Second,
 		Server:  &http.Server{Addr: ":5000", Handler: router},
@@ -161,8 +176,4 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonSuccessResponse(w, 200, created)
 	return
-}
-
-func (sa SporeAPI) StaticFiles(w http.ResponseWriter, r *http.Request){
-
 }
