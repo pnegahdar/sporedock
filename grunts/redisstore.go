@@ -6,8 +6,8 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
@@ -15,7 +15,6 @@ const CheckinExpireMs = 3000
 
 const LeadershipCheckinMs = 3000
 const LeadershipExpireMs = 5000
-
 
 func CreateStore(context *types.RunContext, connectionString, group string) types.SporeStore {
 	if strings.HasPrefix(connectionString, "redis://") {
@@ -38,7 +37,7 @@ func wrapError(err error) error {
 
 type RedisStore struct {
 	mu               sync.Mutex
-	initOnce               sync.Once
+	initOnce         sync.Once
 	connectionString string
 	connPool         *redis.Pool
 	group            string
@@ -74,16 +73,9 @@ func (rs RedisStore) runLeaderElection() {
 		case <-time.After(checkinDur):
 			conn := rs.GetConn()
 			defer conn.Close()
-			reply, err := conn.Do("SETNX", leaderKey, rs.myMachineID)
-			utils.HandleError(err)
-			resp, err := redis.Int(reply, nil)
-
+			_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipCheckinMs)
 			utils.HandleError(err)
 		// Todo: what if this fails
-			if resp == 1 {
-				_, err := conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
-				utils.HandleError(err)
-			}
 		case <-stopChan:
 			return
 		}
@@ -146,7 +138,7 @@ func (rs *RedisStore) setup() {
 }
 
 func (rs *RedisStore) GetConn() redis.Conn {
-	rs.initOnce.Do(func(){
+	rs.initOnce.Do(func() {
 		rs.setup()
 	})
 	conn := rs.connPool.Get()

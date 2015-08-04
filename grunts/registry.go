@@ -99,7 +99,6 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string) *Gru
 	myIP := net.ParseIP("127.0.0.1")
 	// myType := "leader"
 
-
 	// Create Run Context
 	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName}
 	// Register and run

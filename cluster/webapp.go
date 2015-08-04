@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
 )
@@ -59,30 +58,6 @@ func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 		ExposedPorts: exposedPorts}
 }
 
-func NewWebApp(id string, image string, balancedTcpPort int) *WebApp {
-	return &WebApp{
-		ID:              id,
-		Image:           image,
-		BalancedTCPPort: balancedTcpPort,
-		Count:           1,
-	}
-}
-
-func GetAllWebApps(rc *types.RunContext) (*[]WebApp, error) {
-	webapps := &[]WebApp{}
-	err := rc.Store.GetAll(webapps, 0, -1)
-	if err != nil {
-		return webapps, err
-	}
-	return webapps, nil
-}
-
-func GetWebapp(rc *types.RunContext, id string) (*WebApp, error) {
-	ret := &WebApp{}
-	err := rc.Store.Get(ret, id)
-	if err != nil {
-		return ret, err
-	}
-	return ret, nil
-
+func (wa *WebApp) Validate() error{
+	return nil
 }

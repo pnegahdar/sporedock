@@ -1,10 +1,10 @@
 package grunts
 
 import (
-	"github.com/stretchr/testify/suite"
-	"testing"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
+	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 const testGroupName = "testGroup"
@@ -51,7 +51,7 @@ func (suite *GenericStoreTestSuite) TestGet() {
 	suite.Equal(err, types.ErrNoneFound)
 
 	newSet := &TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
 	err = suite.getStore().Set(newSet, newSet.ID, types.SentinelEnd)
 	suite.Nil(err)
@@ -63,7 +63,7 @@ func (suite *GenericStoreTestSuite) TestGet() {
 func (suite *GenericStoreTestSuite) TestExists() {
 
 	newSet := &TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
 
 	exists, err := suite.getStore().Exists(newSet, newSet.ID)
@@ -83,9 +83,9 @@ func (suite *GenericStoreTestSuite) TestGetAll() {
 	ids := []string{}
 	var err error
 	countInsert := 100
-	for i := 0; i<countInsert; i++ {
+	for i := 0; i < countInsert; i++ {
 		newSet := &TestTypeA{
-			ID: utils.GenGuid(),
+			ID:    utils.GenGuid(),
 			Extra: utils.GenGuid()}
 		err = suite.getStore().Set(newSet, newSet.ID, types.SentinelEnd)
 		ids = append(ids, newSet.ID)
@@ -107,7 +107,7 @@ func (suite *GenericStoreTestSuite) TestGetAll() {
 func (suite *GenericStoreTestSuite) TestSet() {
 	id := utils.GenGuid()
 	newSet := &TestTypeA{
-		ID: id,
+		ID:    id,
 		Extra: "TestExtraA"}
 	err := suite.getStore().Set(newSet, newSet.ID, types.SentinelEnd)
 	suite.Nil(err)
@@ -135,12 +135,12 @@ func (suite *GenericStoreTestSuite) TestSet() {
 
 }
 
-func (suite *GenericStoreTestSuite) TestDelete(){
+func (suite *GenericStoreTestSuite) TestDelete() {
 	first := TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
 	second := TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
 	err := suite.getStore().Set(first, first.ID, types.SentinelEnd)
 	suite.Nil(err)
@@ -160,13 +160,14 @@ func (suite *GenericStoreTestSuite) TestDelete(){
 
 }
 
-func (suite *GenericStoreTestSuite) TestDeleteAll(){
+func (suite *GenericStoreTestSuite) TestDeleteAll() {
 	first := TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
 	second := TestTypeA{
-		ID: utils.GenGuid(),
+		ID:    utils.GenGuid(),
 		Extra: utils.GenGuid()}
+
 	err := suite.getStore().Set(first, first.ID, types.SentinelEnd)
 	suite.Nil(err)
 	err = suite.getStore().Set(second, second.ID, types.SentinelEnd)

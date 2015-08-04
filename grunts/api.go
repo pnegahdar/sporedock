@@ -21,6 +21,12 @@ type Route struct {
 
 type Routes []Route
 
+var typeMap = map[string]types.AutoSavable{
+	types.EntityTypeWebapp : cluster.WebApp{}}
+
+var typeMapSlice = map[string]interface{}{
+	types.EntityTypeWebapp : []cluster.WebApp{}}
+
 type SporeAPI struct {
 	runContext *types.RunContext
 	stopCast   utils.SignalCast
@@ -44,16 +50,16 @@ func (sa SporeAPI) Run(runContexnt *types.RunContext) {
 			sa.Home,
 		},
 		Route{
-			"WebAppIndex",
+			"GenericTypeIndex",
 			"GET",
-			types.GetRoute(types.EntityTypeWebapp),
-			sa.WebAppsIndex,
+			types.GetRoute("gen", "{type}"),
+			sa.GenericTypeIndex,
 		},
 		Route{
 			"WebAppCreate",
 			"POST",
-			types.GetRoute(types.EntityTypeWebapp),
-			sa.WebAppCreate,
+			types.GetRoute("gen", "{type}", "{id}"),
+			sa.GenericTypeCreate,
 		},
 	}
 	router := mux.NewRouter().StrictSlash(false)
@@ -77,10 +83,10 @@ func (sa SporeAPI) Stop() {
 	sa.stopCast.Signal()
 }
 
-func jsonErrorResponse(w http.ResponseWriter, err error) {
+func jsonErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: 400})
+	w.WriteHeader(statusCode)
+	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: statusCode})
 	utils.HandleError(marshall_err)
 	fmt.Fprint(w, json_string)
 
@@ -115,32 +121,51 @@ func (sa SporeAPI) Home(w http.ResponseWriter, r *http.Request) {
 	jsonSuccessResponse(w, 200, data)
 }
 
-func (sa SporeAPI) WebAppsIndex(w http.ResponseWriter, r *http.Request) {
-	webapps, err := cluster.GetAllWebApps(sa.runContext)
+func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	genericTypeID := vars["type"]
+	genericType, ok := typeMapSlice[genericTypeID]
+	if !ok {
+		jsonErrorResponse(w, types.ErrNotFound, 404)
+		return
+	}
+	err := sa.runContext.Store.GetAll(genericType, 0, types.SentinelEnd)
 	if err != nil {
-		jsonErrorResponse(w, err)
+		jsonErrorResponse(w, err, 400)
 	} else {
-		jsonSuccessResponse(w, 200, webapps)
+		jsonSuccessResponse(w, 200, genericType)
 	}
 }
 
-func (sa SporeAPI) WebAppCreate(w http.ResponseWriter, r *http.Request) {
+func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	genericTypeID := vars["type"]
+	typeID := vars["id"]
+	genericType, ok := typeMap[genericTypeID]
+	if !ok {
+		jsonErrorResponse(w, types.ErrNotFound, 404)
+		return
+	}
 	data, err := datafromJsonRequest(bodyString(r))
 	if err != nil {
-		jsonErrorResponse(w, err)
+		jsonErrorResponse(w, err, 400)
 		return
 	}
-	webapp := &cluster.WebApp{}
-	err = utils.Unmarshall(data, webapp)
+	err = utils.Unmarshall(data, genericType)
 	if err != nil {
-		jsonErrorResponse(w, err)
+		jsonErrorResponse(w, err, 400)
 		return
 	}
-	sa.runContext.Store.Set(webapp, webapp.ID, -1)
+	err = genericType.Validate()
 	if err != nil {
-		jsonErrorResponse(w, err)
+		jsonErrorResponse(w, err, 400)
 		return
 	}
-	jsonSuccessResponse(w, 200, webapp)
+	sa.runContext.Store.Set(genericType, typeID, -1)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	jsonSuccessResponse(w, 200, genericType)
 	return
 }

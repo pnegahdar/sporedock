@@ -43,6 +43,10 @@ type SporeStore interface {
 	DeleteAll(v interface{}) error
 }
 
+type AutoSavable interface {
+	Validate() error
+}
+
 type RunContext struct {
 	Store       SporeStore
 	MyMachineID string
