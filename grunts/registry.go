@@ -10,20 +10,15 @@ import (
 
 const RestartDecaySeconds = 1
 
-type Grunt interface {
-	ProcName() string
-	Run(runContext *types.RunContext)
-	ShouldRun(runContext types.RunContext) bool
-}
-
 type GruntRegistry struct {
-	Grunts   map[string]Grunt
+	Grunts   map[string]types.Grunt
 	Context  *types.RunContext
 	runCount map[string]int
 	startMe  chan string
+	stopCast utils.SignalCast
 }
 
-func (gr *GruntRegistry) registerGrunts(grunts ...Grunt) {
+func (gr *GruntRegistry) registerGrunts(grunts ...types.Grunt) {
 	gr.startMe = make(chan string, len(grunts))
 	// Todo: check should run
 	utils.LogInfo(fmt.Sprintf("%v grunts", len(grunts)))
@@ -47,53 +42,73 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 	delayTot := RestartDecaySeconds * runCount
 	gr.runCount[gruntName] = runCount + 1
 	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
-	go func() {
+	stopChan := gr.stopCast.Listen()
+	select {
+	case <-time.After(time.Duration(delayTot) * time.Second):
 		defer func() {
 			if rec := recover(); rec != nil {
 				utils.LogInfo(fmt.Sprintf("Grunt %v paniced", gruntName))
-				gr.startMe <- gruntName
+			} else {
+				utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
 			}
+			gr.startMe <- gruntName
 		}()
-		time.Sleep(time.Duration(delayTot) * time.Second)
 		utils.LogInfo(fmt.Sprintf("Running grunt %v", gruntName))
 		grunt.Run(gr.Context)
-
-		//Send over again
-		utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
-		gr.startMe <- gruntName
-
-	}()
-}
-
-func (gr *GruntRegistry) Start(grunts ...Grunt) {
-	gr.registerGrunts(grunts...)
-	utils.LogInfo("Runner started.")
-	// Range blocks on startMe channel
-	for gruntToStart := range gr.startMe {
-		go gr.runGrunt(gruntToStart)
+	case <-stopChan:
+		return
 	}
 }
 
-func NewGruntRegistry(rc *types.RunContext) *GruntRegistry{
-	grunts := make(map[string]Grunt)
+func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
+	gr.registerGrunts(grunts...)
+	utils.LogInfo("Runner started.")
+	// Range blocks on startMe channel
+	go func() {
+		stopChan := gr.stopCast.Listen()
+		for {
+			select {
+			case gruntToStart := <-gr.startMe:
+				go gr.runGrunt(gruntToStart)
+			case <-stopChan:
+				return
+			}
+		}
+	}()
+}
+
+func (gr *GruntRegistry) Stop() {
+	for _, grunt := range gr.Grunts {
+		grunt.Stop()
+	}
+	gr.stopCast.Signal()
+
+}
+
+func (gr *GruntRegistry) Wait() {
+	<-gr.stopCast.Listen()
+}
+
+func NewGruntRegistry(rc *types.RunContext) *GruntRegistry {
+	grunts := make(map[string]types.Grunt)
 	runCount := make(map[string]int)
 	return &GruntRegistry{Context: rc, Grunts: grunts, runCount: runCount}
 }
 
-func CreateAndRun() {
-	connectionString := "redis://localhost:6379"
-	groupName := "testGroup"
-	machineID := "myMachine"
+func CreateAndRun(connectionString, groupName, machineID, machineIP string) *GruntRegistry {
 	myIP := net.ParseIP("127.0.0.1")
 	// myType := "leader"
 
-	// Initialize workers
-	store := CreateStore(connectionString, groupName)
-	api := SporeAPI{}
-
 	// Create Run Context
-	runContext := types.RunContext{MyMachineID: machineID, Store: store, MyIP: myIP, MyGroup: groupName}
+	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName}
 	// Register and run
 	gruntRegistry := NewGruntRegistry(&runContext)
+
+	// Initialize workers
+	store := CreateStore(&runContext, connectionString, groupName)
+	api := SporeAPI{}
+	runContext.Store = store
+
 	gruntRegistry.Start(store, api)
+	return gruntRegistry
 }

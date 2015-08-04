@@ -2,7 +2,9 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"reflect"
 )
 
 type SporeType string
@@ -18,34 +20,31 @@ type HttpError struct {
 	Error  error
 }
 
-func RewrapError(err interface{}) HttpError {
-	switch err.(type) {
-	case HttpError:
-		return err.(HttpError)
-	case error:
-		// Return all other errors as a 400 bad request
-		return HttpError{Status: 400, Error: err.(error)}
-	default:
-		panic("Unknown error type returned")
-	}
-}
-
 var ErrConnectionString = errors.New("Connection string must start with redis://")
 var ErrConnectionStringNotSet = errors.New("Connection string not set.")
 
 // HTTP status errors
-var ErrEmptyQuery = HttpError{Status: 404, Error: errors.New("No results found.")}
+type Grunt interface {
+	ProcName() string
+	Run(runContext *RunContext)
+	Stop()
+	ShouldRun(runContext *RunContext) bool
+}
+
+const SentinelEnd = -1
 
 type SporeStore interface {
-	ProcName() string
-	ShouldRun(RunContext) bool
-	Get(item Storable) (Storable, error)
-	GetAll(retType Storable) ([]Storable, error)
-	GetLog(retType Storable, limit int) ([]Storable, error)
-	Set(item Storable) error
-	SetLog(item Storable, logLength int) error
-	Delete(item Storable) error
-	Run(context *RunContext)
+	Grunt
+	Get(i interface{}, id string) error
+	GetAll(v interface{}, start int, end int) error
+	Set(v interface{}, id string, logTrim int) error
+	Exists(v interface{}, id string) (bool, error)
+	Delete(v interface{}, id string) error
+	DeleteAll(v interface{}) error
+}
+
+type AutoSavable interface {
+	Validate() error
 }
 
 type RunContext struct {
@@ -56,9 +55,28 @@ type RunContext struct {
 	MyGroup     string
 }
 
-type Storable interface {
-	TypeIdentifier() string
-	Identifier() string
-	ToString() string
-	FromString(data string, rc *RunContext) (Storable, error)
+type TypeMeta struct {
+	IsStruct bool
+	TypeName string
+}
+
+func NewMeta(v interface{}) (TypeMeta, error) {
+	typeof := reflect.TypeOf(v)
+	kind := typeof.Kind()
+	if kind == reflect.Ptr {
+		typeof = reflect.ValueOf(v).Elem().Type()
+		kind = typeof.Kind()
+	}
+	switch kind {
+	case reflect.Slice:
+		meta := TypeMeta{IsStruct: true, TypeName: fmt.Sprint(typeof.Elem())}
+		return meta, nil
+	case reflect.Struct:
+		meta := TypeMeta{IsStruct: false, TypeName: fmt.Sprint(typeof)}
+		return meta, nil
+	default:
+		err := errors.New("Type not struct or slice")
+		return TypeMeta{}, err
+
+	}
 }

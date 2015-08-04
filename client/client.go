@@ -1,17 +1,16 @@
 package client
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pnegahdar/sporedock/utils"
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/cluster"
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"errors"
 	"strings"
 )
-
 
 type ClientResponse struct {
 	HttpReposne       *http.Response
@@ -51,9 +50,11 @@ func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
 	return parseResp(resp)
 }
 
-func (cl Client) postjson(entityName string, storable ...types.Storable) ClientResponse {
+func (cl Client) postjson(entityName string, obj interface{}) ClientResponse {
 	fullRoute := cl.fullUrl(entityName, "")
-	reqObject := types.JsonRequest{Data: storable}
+	objstr, err := utils.Marshall(obj)
+	utils.HandleError(err)
+	reqObject := types.JsonRequest{Data: objstr}
 	body, err := utils.Marshall(reqObject)
 	utils.HandleError(err)
 	resp, err := http.Post(fullRoute, "application/json", strings.NewReader(body))
@@ -88,15 +89,15 @@ func (cl Client) GetWebApps() ([]cluster.WebApp, error) {
 
 	}
 	toConvert := resp.SporeDockResponse.Data.([]interface{})
-	for _, wa := range (toConvert) {
+	for _, wa := range toConvert {
 		webapps = append(webapps, wa.(cluster.WebApp))
 	}
 	return webapps, nil
 }
 
-func (cl Client) CreateWebApp(webapp cluster.WebApp) (cluster.WebApp, error){
+func (cl Client) CreateWebApp(webapp cluster.WebApp) (cluster.WebApp, error) {
 	resp := cl.postjson(types.EntityTypeWebapp, webapp)
-	if resp.SporeDockResponse.IsError(){
+	if resp.SporeDockResponse.IsError() {
 		return webapp, errors.New(resp.SporeDockResponse.Error)
 	}
 	return webapp, nil

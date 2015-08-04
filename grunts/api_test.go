@@ -1,13 +1,14 @@
 package grunts
 
+
 import (
 // "fmt"
 	"github.com/pnegahdar/sporedock/client"
 // "github.com/pnegahdar/sporedock/utils"
-	"github.com/stretchr/testify/suite"
-	"testing"
 	"fmt"
 	"github.com/pnegahdar/sporedock/cluster"
+	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 var TestImage = "ubuntu"
@@ -24,7 +25,6 @@ type ApiTestSuite struct {
 }
 
 func (suite *ApiTestSuite) SetupSuite() {
-	go CreateAndRun()
 	suite.Client = client.NewClient("localhost", 5000)
 }
 
@@ -41,7 +41,7 @@ func (suite *ApiTestSuite) TestNoWebapps() {
 	suite.Len(webapps, 0)
 }
 
-func (suite *ApiTestSuite) TestCreateWebapp(){
+func (suite *ApiTestSuite) TestCreateWebapp() {
 	toCreate := cluster.NewWebApp("TESTWEBAPP", TestImage, 8000)
 	webapp, err := suite.Client.CreateWebApp(*toCreate)
 	suite.Nil(err)
@@ -49,9 +49,10 @@ func (suite *ApiTestSuite) TestCreateWebapp(){
 }
 
 func TestApiTestSuite(t *testing.T) {
+	registry := CreateAndRun("redis://localhost:6379", "testGroup", "myMachine", "127.0.0.1")
 	suite.Run(t, new(ApiTestSuite))
+	registry.Stop()
 }
-
 
 // func TestCreateWebapp(t *testing.T) {
 // 	// Test No ID

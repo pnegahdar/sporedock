@@ -9,5 +9,6 @@ import (
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logging.SetLevel(logging.INFO, "main")
-	grunts.CreateAndRun()
+	gr := grunts.CreateAndRun("redis://localhost:6379", "testGroup", "myMachine", "127.0.0.1")
+	gr.Wait()
 }

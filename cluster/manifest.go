@@ -1,38 +1,13 @@
 package cluster
 
-import (
-	"github.com/pnegahdar/sporedock/utils"
-)
-
 type MachineManifest struct {
 	Spore      string
 	WebApps    string
 	WorkerApps string
 }
 
-func (mm MachineManifest) Identifier() string {
-	return mm.Spore
-}
-
-func (mm MachineManifest) TypeIdentifier() string {
-	return "machineManifest"
-}
-
-func (mm MachineManifest) ToString() string {
-	data, err := utils.Marshall(mm)
-	utils.HandleError(err)
-	return data
-}
-
-func (mm MachineManifest) validate() error {
+func (mm MachineManifest) Validate() error {
 	return nil
-}
-
-func (mm MachineManifest) FromString(data string) (MachineManifest, error) {
-	mm = MachineManifest{}
-	utils.Unmarshall(data, &mm)
-	err := mm.validate()
-	return mm, err
 }
 
 //func (mm MachineManifest) IterApps() []DockerApp {
