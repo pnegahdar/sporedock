@@ -119,7 +119,9 @@ func bodyString(r *http.Request) string {
 
 func datafromJsonRequest(body string) (string, error) {
 	request := types.JsonRequest{}
+	fmt.Println("body", body)
 	err := utils.Unmarshall(body, &request)
+	fmt.Println(body, err)
 	if err != nil {
 		return request.Data, types.ErrUnparsableRequest
 	}

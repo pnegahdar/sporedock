@@ -24,13 +24,13 @@ func GetDashboardRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", DashPrefix, path.Join(routeParts...))
 }
 type Response struct {
-	Data       interface{} `json:data`
-	Error      string      `json:error`
-	StatusCode int         `json:code`
+	Data       interface{} `json:"data"`
+	Error      string      `json:"error"`
+	StatusCode int         `json:"code"`
 }
 
 type JsonRequest struct {
-	Data string `json:data`
+	Data string `json:"data"`
 }
 
 func (rs Response) IsError() bool {

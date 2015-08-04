@@ -31,21 +31,32 @@ class LabeledInput extends React.Component {
 }
 
 class WebappForm extends React.Component {
+  constructor() {
+    super()
+    this.state = {
+      Count: 2,
+      ID: '',
+      AttachedEnvs: [],
+      ExtraEnv: {},
+      Image: '',
+      BalancedInternalTCPPort: 8000,
+      Cpus: 2,
+      Memory: 2048
+    }
+  }
   render() {
     console.log(this.state)
     var input = (prop, label) =>
-      <LabeledInput label={label} onChange={this.inputChange(prop)}/>
+      <LabeledInput label={label} onChange={this.inputChange(prop)} value={this.state[prop]}/>
 
     return <div>
       <h2 className='mono'>New Webapp</h2>
-      {input('count', 'Count')}
-      {input('id', 'ID')}
-      {input('attachedEnvs', 'Attached Envs')}
-      {input('extraEnv', 'Extra Env')}
-      {input('image', 'Image')}
-      {input('balancedInternalTCPPort', 'Internal TCP Port')}
-      {input('cpus', 'CPUs')}
-      {input('memory', 'Memory')}
+      {input('Count', 'Count')}
+      {input('ID', 'ID')}
+      {input('Image', 'Image')}
+      {input('BalancedInternalTCPPort', 'Internal TCP Port')}
+      {input('Cpus', 'CPUs')}
+      {input('Memory', 'Memory')}
       <button className='sp-btn' onClick={::this.onSubmit}>Submit</button>
     </div>
   }
@@ -56,7 +67,7 @@ class WebappForm extends React.Component {
   }
   onSubmit() {
     return req.post('/api/v1/gen/webapp')
-      .send(this.state).promise()
+      .send({data: JSON.stringify(this.state)}).promise()
   }
 }
 
