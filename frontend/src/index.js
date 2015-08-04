@@ -14,6 +14,7 @@ import React from 'react'
 import req from 'superagent-bluebird-promise'
 import { Router, Route, Link } from 'react-router'
 import { history } from 'react-router/lib/HashHistory'
+import R from 'ramda'
 window.React = React
 
 class LabeledInput extends React.Component {
@@ -35,7 +36,7 @@ class WebappForm extends React.Component {
     super()
     this.state = {
       Count: 2,
-      ID: '',
+      ID: 'parhambox',
       AttachedEnvs: [],
       ExtraEnv: {},
       Image: '',
@@ -45,7 +46,6 @@ class WebappForm extends React.Component {
     }
   }
   render() {
-    console.log(this.state)
     var input = (prop, label) =>
       <LabeledInput label={label} onChange={this.inputChange(prop)} value={this.state[prop]}/>
 
@@ -57,7 +57,7 @@ class WebappForm extends React.Component {
       {input('BalancedInternalTCPPort', 'Internal TCP Port')}
       {input('Cpus', 'CPUs')}
       {input('Memory', 'Memory')}
-      <button className='sp-btn' onClick={::this.onSubmit}>Submit</button>
+      <button className='sp-btn' onClick={R.partial(this.props.onSubmit, this.state)}>Submit</button>
     </div>
   }
   inputChange(prop) {
@@ -65,24 +65,49 @@ class WebappForm extends React.Component {
       this.setState({[prop]: val})
     }
   }
-  onSubmit() {
-    return req.post('/api/v1/gen/webapp')
-      .send({data: JSON.stringify(this.state)}).promise()
+}
+
+class Webapp extends React.Component {
+  render() {
+    return <div>
+      <h2 className='mono'>Webapp {this.props.params.id}</h2>
+    </div>
   }
 }
 
 class Sporedock extends React.Component {
+  constructor() {
+    super()
+    this.state = {apps: []}
+  }
+  componentDidMount() {
+    req.get('/api/v1/gen/webapp')
+      .then(R.prop('body'))
+      .then(response => this.setState({apps: response.data}))
+  }
   render() {
     return <div className='div.grid-container'>
       <div className='grid-100'>
         <h2>Sporedock</h2>
-        <WebappForm/>
+          <h2 className='mono'>All Webapps</h2>
+          <div>
+            {this.state.apps.map(app => <div><Link to={`/webapp/${app.ID}`}>ID: {app.ID}</Link></div>)}
+          </div>
+        <WebappForm onSubmit={::this.onSubmit}/>
+        {this.props.children}
       </div>
     </div>
+  }
+  onSubmit(data) {
+    return req.post('/api/v1/gen/webapp')
+      .send({data: JSON.stringify(data)})
+      .promise()
   }
 }
 
 React.render(
   (<Router history={history}>
-    <Route path='/' component={Sporedock}/>
+    <Route path='/' component={Sporedock}>
+      <Route path='webapp/:id' component={Webapp}/>
+    </Route>
   </Router>), document.body)
