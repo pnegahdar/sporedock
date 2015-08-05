@@ -34,7 +34,7 @@ type Grunt interface {
 const SentinelEnd = -1
 
 
-type Creatable interface{
+type Creatable interface {
 	Create(*RunContext, string) (interface{}, error)
 }
 
@@ -76,6 +76,9 @@ func NewMeta(v interface{}) (TypeMeta, error) {
 	case reflect.Struct:
 		meta := TypeMeta{IsStruct: false, TypeName: fmt.Sprint(typeof)}
 		return meta, nil
+	case reflect.Interface:
+		typeof = reflect.ValueOf(v).Elem().Elem().Type()
+		return TypeMeta{IsStruct: false, TypeName: fmt.Sprint(typeof)}, nil
 	default:
 		err := errors.New("Type not struct or slice")
 		return TypeMeta{}, err

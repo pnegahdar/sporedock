@@ -9,9 +9,20 @@ type TestApp struct {
 	name string
 }
 
+func (n TestApp) GetName() string {
+	return n.name
+}
+
+
 type TypesTestSuite struct {
 	suite.Suite
 }
+
+type Namable interface {
+	GetName() string
+}
+
+var testMap = map[string]Namable{"test" : TestApp{}}
 
 func (suite *TypesTestSuite) TestTypeMetaExtractor() {
 	var app TestApp
@@ -34,6 +45,14 @@ func (suite *TypesTestSuite) TestTypeMetaExtractor() {
 	suite.Nil(err)
 	suite.Equal(TypeMeta{IsStruct: true, TypeName: "types.TestApp"}, meta)
 	// Todo(parham): Key namespace tests
+
+	appInterface := testMap["test"]
+	meta, err = NewMeta(appInterface)
+	suite.Nil(err)
+	suite.Equal(TypeMeta{IsStruct: false, TypeName: "types.TestApp"}, meta)
+	meta, err = NewMeta(&appInterface)
+	suite.Nil(err)
+	suite.Equal(TypeMeta{IsStruct: false, TypeName: "types.TestApp"}, meta)
 }
 
 func TestTypesTestSuite(t *testing.T) {

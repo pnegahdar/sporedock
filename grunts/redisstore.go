@@ -232,7 +232,6 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 	} else {
 		return types.ErrIDExists
 	}
-
 }
 
 func (rs RedisStore) Delete(v interface{}, id string) error {

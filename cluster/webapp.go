@@ -75,7 +75,7 @@ func (wa WebApp) Create(rc *types.RunContext, data string) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	rc.Store.Set(genericType, genericType.ID, -1)
+	err = rc.Store.Set(genericType, genericType.ID, -1)
 	if err != nil {
 		return nil, err
 	}

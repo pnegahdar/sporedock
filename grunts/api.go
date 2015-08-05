@@ -23,14 +23,14 @@ type Route struct {
 
 type Routes []Route
 
-func frontendDir() string{
+func frontendDir() string {
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Join(path.Dir(filename), "../frontend")
 }
 
-func frontendSubDir(addon...string) string{
+func frontendSubDir(addon...string) string {
 	parts := []string{frontendDir()}
-	for _, v := range(addon){
+	for _, v := range (addon) {
 		parts = append(parts, v)
 	}
 	return path.Join(parts...)
@@ -45,7 +45,7 @@ func (sa SporeAPI) ProcName() string {
 	return "SporeAPI"
 }
 
-var typeMap = map[string]types.Creatable{"webapp" : cluster.WebApp{}}
+var TypeMap = map[string]interface{}{"webapp" : cluster.WebApp{}}
 
 func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
@@ -71,6 +71,18 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 			"GenericTypeCreate",
 			"POST",
 			types.GetApiRoute("gen", "{type}"),
+			sa.GenericTypeCreate,
+		},
+		Route{
+			"GenericTypeGet",
+			"GET",
+			types.GetApiRoute("gen", "{type}", "{id}"),
+			sa.GenericTypeGet,
+		},
+		Route{
+			"GenericTypeDelete",
+			"DELETE",
+			types.GetApiRoute("gen", "{type}", "{id}"),
 			sa.GenericTypeCreate,
 		},
 	}
@@ -162,20 +174,56 @@ func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
+func (sa SporeAPI) GenericTypeGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
-	data, err := datafromJsonRequest(bodyString(r))
-	creatable, ok := typeMap[genericTypeID]
+	objectID := vars["id"]
+	creatable, ok := TypeMap[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	created, err := creatable.Create(sa.runContext, data)
+	err := sa.runContext.Store.Get(&creatable, objectID)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	jsonSuccessResponse(w, 200, creatable)
+	return
+}
+
+func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	genericTypeID := vars["type"]
+	data, err := datafromJsonRequest(bodyString(r))
+	creatable, ok := TypeMap[genericTypeID]
+	if !ok {
+		jsonErrorResponse(w, types.ErrNotFound, 404)
+		return
+	}
+	created, err := creatable.(types.Creatable).Create(sa.runContext, data)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
 	jsonSuccessResponse(w, 200, created)
+	return
+}
+
+func (sa SporeAPI) GenericTypeDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	genericTypeID := vars["type"]
+	objectID := vars["id"]
+	creatable, ok := TypeMap[genericTypeID]
+	if !ok {
+		jsonErrorResponse(w, types.ErrNotFound, 404)
+		return
+	}
+	err := sa.runContext.Store.Delete(creatable, objectID)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	jsonSuccessResponse(w, 200, true)
 	return
 }
