@@ -35,6 +35,7 @@ func GetDashboardRoute(routeParts ...string) string {
 type Response struct {
 	Data       interface{} `json:"data"`
 	Error      string      `json:"error"`
+	ErrorTB    string 		`json:errorTB`
 	StatusCode int         `json:"code"`
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 	"runtime"
 	"path"
+	"runtime/debug"
 )
 
 type Route struct {
@@ -44,8 +45,6 @@ type SporeAPI struct {
 func (sa SporeAPI) ProcName() string {
 	return "SporeAPI"
 }
-
-var TypeMap = map[string]types.Validable{"webapp" : cluster.WebApp{}}
 
 func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
@@ -83,7 +82,7 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 			"GenericTypeDelete",
 			"DELETE",
 			types.GetGenApiRoute("{type}", "{id}"),
-			sa.GenericTypeCreate,
+			sa.GenericTypeDelete,
 		},
 	}
 	router := mux.NewRouter()
@@ -118,7 +117,8 @@ func (sa SporeAPI) Stop() {
 func jsonErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: statusCode})
+	tb := string(debug.Stack())
+	json_string, marshall_err := utils.Marshall(types.Response{Error: err.Error(), StatusCode: statusCode, ErrorTB: tb})
 	utils.HandleError(marshall_err)
 	fmt.Fprint(w, json_string)
 
@@ -156,38 +156,42 @@ func (sa SporeAPI) Home(w http.ResponseWriter, r *http.Request) {
 func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
+	var validable interface{}
 	switch genericTypeID {
 	case "webapp":
 		genericType := []cluster.WebApp{}
 		err := sa.runContext.Store.GetAll(&genericType, 0, types.SentinelEnd)
 		if err != nil {
 			jsonErrorResponse(w, err, 400)
-		} else {
-			jsonSuccessResponse(w, 200, genericType)
+			return
 		}
-		return
+		validable = genericType
 	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
+	jsonSuccessResponse(w, 200, validable)
 }
 
 func (sa SporeAPI) GenericTypeGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	objectID := vars["id"]
-	creatable, ok := TypeMap[genericTypeID]
-	if !ok {
+	var validable types.Validable
+	switch genericTypeID{
+	case "webapp":
+		toGet := cluster.WebApp{}
+		err := sa.runContext.Store.Get(&toGet, objectID)
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		validable = toGet
+	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	err := sa.runContext.Store.Get(&creatable, objectID)
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	jsonSuccessResponse(w, 200, creatable)
-	return
+	jsonSuccessResponse(w, 200, validable)
 }
 
 func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
@@ -219,23 +223,25 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonSuccessResponse(w, 200, validable)
-	return
 }
 
 func (sa SporeAPI) GenericTypeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	objectID := vars["id"]
-	creatable, ok := TypeMap[genericTypeID]
-	if !ok {
+	var validable types.Validable
+	switch genericTypeID{
+	case "webapp":
+		toSave := cluster.WebApp{}
+		validable = toSave
+	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	err := sa.runContext.Store.Delete(creatable, objectID)
+	err := sa.runContext.Store.Delete(validable, objectID)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
 	jsonSuccessResponse(w, 200, true)
-	return
 }

@@ -240,7 +240,10 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 func (rs RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	_, err := conn.Do("HDEL", rs.typeKey(v), id)
+	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(v), id))
+	if exists != 1{
+		return types.ErrNoneFound
+	}
 	return wrapError(err)
 }
 
