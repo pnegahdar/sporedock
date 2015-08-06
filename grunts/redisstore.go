@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
@@ -208,7 +209,10 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 	typeKey := rs.typeKey(v)
 	data, err := utils.Marshall(v)
 	if err != nil {
-		wrapError(err)
+		return wrapError(err)
+	}
+	if id == ""{
+		return types.ErrIDEmpty
 	}
 	conn := rs.GetConn()
 	defer conn.Close()
@@ -230,6 +234,9 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 		}
 		return nil
 	} else {
+		fmt.Println("YOOOOO", v, id)
+		fmt.Println("DATA", data)
+		fmt.Println("YOOOOO", wasSet)
 		return types.ErrIDExists
 	}
 }

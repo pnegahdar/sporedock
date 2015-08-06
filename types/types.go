@@ -34,8 +34,9 @@ type Grunt interface {
 const SentinelEnd = -1
 
 
-type Creatable interface {
-	Create(*RunContext, string) (interface{}, error)
+type Validable interface {
+	Validate(*RunContext) error
+	GetID() string
 }
 
 type SporeStore interface {

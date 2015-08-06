@@ -20,6 +20,15 @@ var ErrIDExists = errors.New("Object with that ID already exists please delete a
 func GetApiRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
 }
+
+func GetGenApiRoute(rest ...string) string{
+	parts := []string{"gen"}
+	for _, part := range(rest){
+		parts = append(parts, part)
+	}
+	return GetApiRoute(parts...)
+}
+
 func GetDashboardRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", DashPrefix, path.Join(routeParts...))
 }

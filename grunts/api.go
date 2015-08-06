@@ -45,7 +45,7 @@ func (sa SporeAPI) ProcName() string {
 	return "SporeAPI"
 }
 
-var TypeMap = map[string]interface{}{"webapp" : cluster.WebApp{}}
+var TypeMap = map[string]types.Validable{"webapp" : cluster.WebApp{}}
 
 func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
@@ -64,25 +64,25 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 		Route{
 			"GenericTypeIndex",
 			"GET",
-			types.GetApiRoute("gen", "{type}"),
+			types.GetGenApiRoute("{type}"),
 			sa.GenericTypeIndex,
 		},
 		Route{
 			"GenericTypeCreate",
 			"POST",
-			types.GetApiRoute("gen", "{type}"),
+			types.GetGenApiRoute("{type}"),
 			sa.GenericTypeCreate,
 		},
 		Route{
 			"GenericTypeGet",
 			"GET",
-			types.GetApiRoute("gen", "{type}", "{id}"),
+			types.GetGenApiRoute("{type}", "{id}"),
 			sa.GenericTypeGet,
 		},
 		Route{
 			"GenericTypeDelete",
 			"DELETE",
-			types.GetApiRoute("gen", "{type}", "{id}"),
+			types.GetGenApiRoute("{type}", "{id}"),
 			sa.GenericTypeCreate,
 		},
 	}
@@ -196,17 +196,32 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	data, err := datafromJsonRequest(bodyString(r))
-	creatable, ok := TypeMap[genericTypeID]
+	objectValidable, ok := TypeMap[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	created, err := creatable.(types.Creatable).Create(sa.runContext, data)
+	err = utils.Unmarshall(data, &objectValidable)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
-	jsonSuccessResponse(w, 200, created)
+	// objectValidable := object.(types.Validable)
+	//	if !ok{
+	//		jsonErrorResponse(w, errors.New("Couldn't validate type."), 400)
+	//		return
+	//	}
+	err = objectValidable.Validate(sa.runContext)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	err = sa.runContext.Store.Set(&objectValidable, objectValidable.GetID(), -1)
+	if err != nil {
+		jsonErrorResponse(w, err, 400)
+		return
+	}
+	jsonSuccessResponse(w, 200, objectValidable)
 	return
 }
 

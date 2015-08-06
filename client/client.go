@@ -36,7 +36,7 @@ type Client struct {
 }
 
 func (cl Client) fullUrl(entityName, queryString string) string {
-	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetApiRoute(entityName))
+	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetGenApiRoute(entityName))
 	if queryString == "" {
 		return noqs
 	}
@@ -50,8 +50,8 @@ func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
 	return parseResp(resp)
 }
 
-func (cl Client) postjson(entityName string, obj interface{}) ClientResponse {
-	fullRoute := cl.fullUrl(entityName, "")
+func (cl Client) postjson(obj interface{}) ClientResponse {
+	fullRoute := cl.fullUrl("webapp", "")
 	objstr, err := utils.Marshall(obj)
 	utils.HandleError(err)
 	reqObject := types.JsonRequest{Data: objstr}
@@ -96,7 +96,7 @@ func (cl Client) GetWebApps() ([]cluster.WebApp, error) {
 }
 
 func (cl Client) CreateWebApp(webapp cluster.WebApp) (cluster.WebApp, error) {
-	resp := cl.postjson(types.EntityTypeWebapp, webapp)
+	resp := cl.postjson(webapp)
 	if resp.SporeDockResponse.IsError() {
 		return webapp, errors.New(resp.SporeDockResponse.Error)
 	}

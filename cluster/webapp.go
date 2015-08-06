@@ -8,15 +8,15 @@ import (
 )
 
 type WebApp struct {
-	Count           int
-	AttachedEnvs    []string
-	ExtraEnv        map[string]string
-	Tags            map[string]string
-	ID              string
-	Image           string
+	Count                   int
+	AttachedEnvs            []string
+	ExtraEnv                map[string]string
+	Tags                    map[string]string
+	ID                      string
+	Image                   string
 	BalancedInternalTCPPort int
-	Cpus			int
-	Memory			int
+	Cpus                    int
+	Memory                  int
 }
 
 func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
@@ -53,32 +53,18 @@ func (wa WebApp) Env() map[string]string {
 
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[string]struct{}{}
-	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct{}{}
+	exposedPorts := map[string]struct {}{}
+	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct {}{}
 	return dockerclient.ContainerConfig{
 		Env:          envsForDocker,
 		Image:        wa.Image,
 		ExposedPorts: exposedPorts}
 }
 
-func (wa *WebApp) Validate() error {
+func (wa WebApp) Validate(rc *types.RunContext) error {
 	return nil
 }
 
-func (wa WebApp) Create(rc *types.RunContext, data string) (interface{}, error) {
-	genericType := &WebApp{}
-	err := utils.Unmarshall(data, &genericType)
-	if err != nil {
-		return nil, err
-	}
-	err = wa.Validate() // Todo(parham): call validate method here.
-	if err != nil {
-		return nil, err
-	}
-	err = rc.Store.Set(genericType, genericType.ID, -1)
-	if err != nil {
-		return nil, err
-	}
-	return genericType, nil
-
+func (wa WebApp) GetID() string {
+	return wa.ID
 }
