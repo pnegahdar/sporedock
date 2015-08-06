@@ -5,12 +5,13 @@ var webpack = require('webpack');
 module.exports = {
   entry: './src/index',
   output: {
-    path: __dirname + '/scripts/',
+    path: __dirname + '/static/',
     filename: 'sporedock.js',
     publicPath: '/scripts/'
   },
   plugins: [
-    new webpack.NoErrorsPlugin()
+    new webpack.NoErrorsPlugin(),
+    new webpack.optimize.UglifyJsPlugin()
   ],
   resolve: {
     extensions: ['', '.js'],
