@@ -1,6 +1,5 @@
 package client
 import (
-	"fmt"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"github.com/pnegahdar/sporedock/cluster"
@@ -33,7 +32,6 @@ func (suite *ApiTestSuite) TestHome() {
 func (suite *ApiTestSuite) TestNoWebapps() {
 	webapps, err := suite.Client.GetWebApps()
 	suite.Nil(err)
-	fmt.Println(webapps)
 	suite.Len(webapps, 0)
 }
 

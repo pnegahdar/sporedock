@@ -131,9 +131,7 @@ func bodyString(r *http.Request) string {
 
 func datafromJsonRequest(body string) (string, error) {
 	request := types.JsonRequest{}
-	fmt.Println("body", body)
 	err := utils.Unmarshall(body, &request)
-	fmt.Println(body, err)
 	if err != nil {
 		return request.Data, types.ErrUnparsableRequest
 	}
@@ -196,32 +194,31 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	data, err := datafromJsonRequest(bodyString(r))
-	objectValidable, ok := TypeMap[genericTypeID]
-	if !ok {
+	var validable types.Validable
+	switch genericTypeID{
+	case "webapp":
+		toSave := cluster.WebApp{}
+		err = utils.Unmarshall(data, &toSave)
+		if err != nil {
+			jsonErrorResponse(w, err, 400)
+			return
+		}
+		validable = toSave
+	default:
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	err = utils.Unmarshall(data, &objectValidable)
+	err = validable.Validate(sa.runContext)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
-	// objectValidable := object.(types.Validable)
-	//	if !ok{
-	//		jsonErrorResponse(w, errors.New("Couldn't validate type."), 400)
-	//		return
-	//	}
-	err = objectValidable.Validate(sa.runContext)
+	err = sa.runContext.Store.Set(&validable, validable.GetID(), -1)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
-	err = sa.runContext.Store.Set(&objectValidable, objectValidable.GetID(), -1)
-	if err != nil {
-		jsonErrorResponse(w, err, 400)
-		return
-	}
-	jsonSuccessResponse(w, 200, objectValidable)
+	jsonSuccessResponse(w, 200, validable)
 	return
 }
 
