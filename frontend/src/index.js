@@ -1,21 +1,21 @@
-console.log('foo');
 require('./css/main.scss');
 require('./css/unsemantic-grid-responsive.css')
 
-
-// m.route(document.body, "/", {
-//     "/": Layout(homepage),
-//     '/app/new/webapp': Layout(NewWebapp),
-//     '/app/:id': Layout(appview),
-//     "/spore": Layout(spore),
-//     '/spore/:id': Layout(spore)
-// });
 import React from 'react'
 import req from 'superagent-bluebird-promise'
-import { Router, Route, Link } from 'react-router'
+import { Router, Route, Link, Navigation } from 'react-router'
 import { history } from 'react-router/lib/HashHistory'
+import { combineReducers, createStore, applyMiddleware } from 'redux'
+import { Provider, connect } from 'react-redux'
 import R from 'ramda'
+import thunk from 'redux-thunk'
+import * as reducers from './reducers'
+import * as actions from './actions/webapp'
 window.React = React
+
+let createStoreWithMiddleware = applyMiddleware(thunk)(createStore)
+let webapps = combineReducers(reducers)
+let store = createStoreWithMiddleware(webapps)
 
 class LabeledInput extends React.Component {
   render() {
@@ -67,47 +67,67 @@ class WebappForm extends React.Component {
   }
 }
 
-class Webapp extends React.Component {
+var Webapp = connect(state => state.webapp)(React.createClass({
+  mixins: [Navigation],
   render() {
     return <div>
       <h2 className='mono'>Webapp {this.props.params.id}</h2>
+      {JSON.stringify(this.props)}
+      <div>
+        <button className='sp-btn' onClick={this.clickDelete}>Delete</button>
+      </div>
+    </div>
+  },
+  clickDelete() {
+    this.props.dispatch(actions.deleteWebapp(this.props.params.id))
+      .then(() => this.transitionTo('/'))
+  }
+}))
+
+var WebappList = React.createClass({
+  getInitialState() {
+    return {apps: []}
+  },
+  render() {
+    return <div>
+      <h2 className='mono'>All Webapps</h2>
+      <div>
+        {this.props.apps.map(app => <div><Link to={`/webapp/${app.ID}`}>ID: {app.ID}</Link></div>)}
+      </div>
     </div>
   }
-}
+})
 
+@connect(state => state.webapp)
 class Sporedock extends React.Component {
   constructor() {
     super()
-    this.state = {apps: []}
   }
   componentDidMount() {
-    req.get('/api/v1/gen/webapp')
-      .then(R.prop('body'))
-      .then(response => this.setState({apps: response.data}))
+    this.props.dispatch(actions.getWebappList())
   }
   render() {
+    console.log('render', this.props)
     return <div className='div.grid-container'>
       <div className='grid-100'>
-        <h2>Sporedock</h2>
-          <h2 className='mono'>All Webapps</h2>
-          <div>
-            {this.state.apps.map(app => <div><Link to={`/webapp/${app.ID}`}>ID: {app.ID}</Link></div>)}
-          </div>
-        <WebappForm onSubmit={::this.onSubmit}/>
-        {this.props.children}
+        <h2><Link to={'/'}>Sporedock</Link></h2>
+        <WebappList apps={this.props.apps}/>
+        {this.props.children || <WebappForm onSubmit={::this.onSubmit}/>}
       </div>
     </div>
   }
   onSubmit(data) {
-    return req.post('/api/v1/gen/webapp')
-      .send({data: JSON.stringify(data)})
-      .promise()
-  }
+    this.props.dispatch(actions.newWebapp(data))
+      }
 }
 
-React.render(
-  (<Router history={history}>
+function routes() {
+  return <Router history={history}>
     <Route path='/' component={Sporedock}>
       <Route path='webapp/:id' component={Webapp}/>
     </Route>
-  </Router>), document.body)
+  </Router>
+}
+
+React.render(
+  (<Provider store={store}>{routes}</Provider>), document.body)
