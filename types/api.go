@@ -21,9 +21,9 @@ func GetApiRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", ApiPrefix, path.Join(routeParts...))
 }
 
-func GetGenApiRoute(rest ...string) string{
+func GetGenApiRoute(rest ...string) string {
 	parts := []string{"gen"}
-	for _, part := range(rest){
+	for _, part := range rest {
 		parts = append(parts, part)
 	}
 	return GetApiRoute(parts...)
@@ -32,10 +32,11 @@ func GetGenApiRoute(rest ...string) string{
 func GetDashboardRoute(routeParts ...string) string {
 	return fmt.Sprintf("/%v/%v", DashPrefix, path.Join(routeParts...))
 }
+
 type Response struct {
 	Data       interface{} `json:"data"`
 	Error      string      `json:"error"`
-	ErrorTB    string 		`json:errorTB`
+	ErrorTB    string      `json:"errorTB"`
 	StatusCode int         `json:"code"`
 }
 

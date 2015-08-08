@@ -13,7 +13,6 @@ func (n TestApp) GetName() string {
 	return n.name
 }
 
-
 type TypesTestSuite struct {
 	suite.Suite
 }
@@ -22,7 +21,7 @@ type Namable interface {
 	GetName() string
 }
 
-var testMap = map[string]Namable{"test" : TestApp{}}
+var testMap = map[string]Namable{"test": TestApp{}}
 
 func (suite *TypesTestSuite) TestTypeMetaExtractor() {
 	var app TestApp

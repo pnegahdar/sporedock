@@ -2,11 +2,11 @@ package cluster
 
 type MachineManifest struct {
 	Spore      string
-	WebApps    string
-	WorkerApps string
+	WebApps    []string
+	WorkerApps []string
 }
 
-func (mm MachineManifest) Validate() error {
+func (mm *MachineManifest) Validate() error {
 	return nil
 }
 

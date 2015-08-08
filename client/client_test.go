@@ -1,9 +1,10 @@
 package client
+
 import (
-	"github.com/stretchr/testify/suite"
-	"testing"
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/grunts"
+	"github.com/stretchr/testify/suite"
+	"testing"
 )
 
 var TestImage = "ubuntu"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strings"
 )
 
 type SporeType string
@@ -33,10 +34,18 @@ type Grunt interface {
 
 const SentinelEnd = -1
 
+type Identifiable interface {
+	GetID() string
+}
+
+type Creatable interface {
+	Identifiable
+	Validate(*RunContext) error
+}
 
 type Validable interface {
+	Identifiable
 	Validate(*RunContext) error
-	GetID() string
 }
 
 type SporeStore interface {
@@ -58,7 +67,7 @@ type RunContext struct {
 }
 
 type TypeMeta struct {
-	IsStruct bool
+	IsSlice  bool
 	TypeName string
 }
 
@@ -69,20 +78,21 @@ func NewMeta(v interface{}) (TypeMeta, error) {
 		typeof = reflect.ValueOf(v).Elem().Type()
 		kind = typeof.Kind()
 	}
-
+	var isSlice bool
+	var typeName string
 	switch kind {
 	case reflect.Slice:
-		meta := TypeMeta{IsStruct: true, TypeName: fmt.Sprint(typeof.Elem())}
-		return meta, nil
+		isSlice = true
+		typeName = fmt.Sprint(typeof.Elem())
 	case reflect.Struct:
-		meta := TypeMeta{IsStruct: false, TypeName: fmt.Sprint(typeof)}
-		return meta, nil
+		typeName = fmt.Sprint(typeof)
+		isSlice = false
 	case reflect.Interface:
-		typeof = reflect.ValueOf(v).Elem().Elem().Type()
-		return TypeMeta{IsStruct: false, TypeName: fmt.Sprint(typeof)}, nil
+		isSlice = false
+		typeName = fmt.Sprint(reflect.ValueOf(v).Elem().Elem().Type())
 	default:
 		err := errors.New("Type not struct or slice")
 		return TypeMeta{}, err
-
 	}
+	return TypeMeta{IsSlice:isSlice, TypeName: strings.TrimPrefix(typeName, "*")}, nil
 }

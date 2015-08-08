@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
@@ -241,7 +242,7 @@ func (rs RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(v), id))
-	if exists != 1{
+	if exists != 1 {
 		return types.ErrNoneFound
 	}
 	return wrapError(err)

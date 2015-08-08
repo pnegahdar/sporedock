@@ -2,9 +2,9 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/samalba/dockerclient"
-	"github.com/pnegahdar/sporedock/types"
 )
 
 type WebApp struct {
@@ -53,18 +53,18 @@ func (wa WebApp) Env() map[string]string {
 
 func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[string]struct {}{}
-	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct {}{}
+	exposedPorts := map[string]struct{}{}
+	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct{}{}
 	return dockerclient.ContainerConfig{
 		Env:          envsForDocker,
 		Image:        wa.Image,
 		ExposedPorts: exposedPorts}
 }
 
-func (wa WebApp) Validate(rc *types.RunContext) error {
+func (wa *WebApp) Validate(rc *types.RunContext) error {
 	return nil
 }
 
-func (wa WebApp) GetID() string {
+func (wa *WebApp) GetID() string {
 	return wa.ID
 }
