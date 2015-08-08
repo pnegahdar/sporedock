@@ -6,13 +6,12 @@ import (
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
-	"gopkg.in/tylerb/graceful.v1"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"runtime"
 	"runtime/debug"
-	"time"
+	"sync"
 )
 
 type Route struct {
@@ -24,9 +23,9 @@ type Route struct {
 
 type Routes []Route
 
-var genCreate = map[string]types.Validable{"webapp" : &cluster.WebApp{}}
-var genIndex = map[string]types.Validable{"webapp" : &cluster.WebApp{}}
-var genDelete = map[string]types.Validable{"webapp" : &cluster.WebApp{}}
+var genCreate = map[string]types.Validable{"webapp": &cluster.WebApp{}}
+var genIndex = map[string]types.Validable{"webapp": &cluster.WebApp{}}
+var genDelete = map[string]types.Validable{"webapp": &cluster.WebApp{}}
 
 func frontendDir() string {
 	_, filename, _, _ := runtime.Caller(1)
@@ -42,8 +41,10 @@ func frontendSubDir(addon ...string) string {
 }
 
 type SporeAPI struct {
+	sync.Mutex
 	runContext *types.RunContext
 	stopCast   utils.SignalCast
+	stopCastMu sync.Mutex
 }
 
 func (sa SporeAPI) ProcName() string {
@@ -54,7 +55,8 @@ func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
 
-func (sa SporeAPI) Run(runContext *types.RunContext) {
+func (sa *SporeAPI) Run(runContext *types.RunContext) {
+	sa.Lock()
 	sa.runContext = runContext
 	routes := Routes{
 		// API
@@ -89,32 +91,27 @@ func (sa SporeAPI) Run(runContext *types.RunContext) {
 			sa.GenericTypeDelete,
 		},
 	}
-	router := mux.NewRouter().StrictSlash(true)
 	// Register API routes
 	for _, route := range routes {
-		router.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
+		sa.runContext.WebServerRouter.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
 	}
 	// Dash Routes
 	staticRoute := types.GetDashboardRoute("static")
 	staticHandler := http.StripPrefix(staticRoute, http.FileServer(http.Dir(frontendSubDir("static"))))
-	router.Methods("GET").PathPrefix(staticRoute).Name("DashboardStaticFiles").Handler(staticHandler)
-	router.Methods("GET").PathPrefix(types.GetDashboardRoute()).Name("DashboardIndex").HandlerFunc(
+	sa.runContext.WebServerRouter.Methods("GET").PathPrefix(staticRoute).Name("DashboardStaticFiles").Handler(staticHandler)
+	sa.runContext.WebServerRouter.Methods("GET").PathPrefix(types.GetDashboardRoute()).Name("DashboardIndex").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, frontendSubDir("index.html"))
 		})
-	srv := &graceful.Server{
-		Timeout: 10 * time.Second,
-		Server:  &http.Server{Addr: ":5000", Handler: router},
-	}
-	go func() {
-		err := srv.ListenAndServe()
-		utils.HandleError(err)
-	}()
-	<-sa.stopCast.Listen()
-	srv.Stop(0)
+	exit := sa.stopCast.Listen(sa.ProcName() + "RunWait")
+	sa.Unlock()
+	<-exit
 }
 
-func (sa SporeAPI) Stop() {
+// Todo: make sure stop works without pointer receivers?
+func (sa *SporeAPI) Stop() {
+	sa.stopCastMu.Lock()
+	defer sa.stopCastMu.Unlock()
 	sa.stopCast.Signal()
 }
 
@@ -226,7 +223,7 @@ func (sa SporeAPI) GenericTypeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genericTypeID := vars["type"]
 	objectID := vars["id"]
-	creatable, ok := genCreate[genericTypeID]
+	creatable, ok := genDelete[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return

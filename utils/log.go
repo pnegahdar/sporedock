@@ -12,6 +12,7 @@ func HandleError(err error) {
 	if err != nil {
 		log.Error(err.Error())
 		debug.PrintStack()
+		panic(err)
 	}
 }
 

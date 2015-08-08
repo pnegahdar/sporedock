@@ -2,20 +2,24 @@ package grunts
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
+	"sync"
 	"time"
 )
 
 const RestartDecaySeconds = 1
 
 type GruntRegistry struct {
-	Grunts   map[string]types.Grunt
-	Context  *types.RunContext
-	runCount map[string]int
-	startMe  chan string
-	stopCast utils.SignalCast
+	sync.Mutex
+	Grunts     map[string]types.Grunt
+	Context    *types.RunContext
+	runCount   map[string]int
+	startMe    chan string
+	stopCast   utils.SignalCast
+	stopCastMu sync.Mutex
 }
 
 func (gr *GruntRegistry) registerGrunts(grunts ...types.Grunt) {
@@ -33,6 +37,7 @@ func (gr *GruntRegistry) registerGrunts(grunts ...types.Grunt) {
 }
 
 func (gr *GruntRegistry) runGrunt(gruntName string) {
+	gr.Lock()
 	grunt, exists := gr.Grunts[gruntName]
 	if !exists {
 		utils.LogWarn(fmt.Sprintf("Grunt %v DNE %v", gruntName, grunt))
@@ -42,19 +47,24 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 	delayTot := RestartDecaySeconds * runCount
 	gr.runCount[gruntName] = runCount + 1
 	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
-	stopChan := gr.stopCast.Listen()
+	stopChan := gr.stopCast.Listen("registryGruntRunner" + gruntName + string(runCount) + "Waiter")
+	gr.Unlock()
 	select {
 	case <-time.After(time.Duration(delayTot) * time.Second):
-		defer func() {
-			if rec := recover(); rec != nil {
-				utils.LogInfo(fmt.Sprintf("Grunt %v paniced", gruntName))
-			} else {
-				utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
-			}
-			gr.startMe <- gruntName
+		go func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					utils.LogInfo(fmt.Sprintf("Grunt %v paniced", gruntName))
+				} else {
+					utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
+				}
+				gr.Lock()
+				gr.startMe <- gruntName
+				gr.Unlock()
+			}()
+			utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
+			grunt.Run(gr.Context)
 		}()
-		utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
-		grunt.Run(gr.Context)
 	case <-stopChan:
 		return
 	}
@@ -65,11 +75,11 @@ func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
 	utils.LogInfo("Runner started.")
 	// Range blocks on startMe channel
 	go func() {
-		stopChan := gr.stopCast.Listen()
+		stopChan := gr.stopCast.Listen("gruntRegsitryRunnerWaiter")
 		for {
 			select {
 			case gruntToStart := <-gr.startMe:
-				go gr.runGrunt(gruntToStart)
+				gr.runGrunt(gruntToStart)
 			case <-stopChan:
 				return
 			}
@@ -78,15 +88,19 @@ func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
 }
 
 func (gr *GruntRegistry) Stop() {
+	utils.LogInfo("Stopping grunt controller.")
+	gr.stopCastMu.Lock()
+	defer gr.stopCastMu.Unlock()
+	gr.stopCast.Signal()
+
 	for _, grunt := range gr.Grunts {
 		grunt.Stop()
 	}
-	gr.stopCast.Signal()
 
 }
 
 func (gr *GruntRegistry) Wait() {
-	<-gr.stopCast.Listen()
+	<-gr.stopCast.Listen("registryWaiter")
 }
 
 func NewGruntRegistry(rc *types.RunContext) *GruntRegistry {
@@ -95,20 +109,23 @@ func NewGruntRegistry(rc *types.RunContext) *GruntRegistry {
 	return &GruntRegistry{Context: rc, Grunts: grunts, runCount: runCount}
 }
 
-func CreateAndRun(connectionString, groupName, machineID, machineIP string) *GruntRegistry {
-	myIP := net.ParseIP("127.0.0.1")
+func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string) *GruntRegistry {
+	myIP := net.ParseIP(machineIP)
 	// myType := "leader"
 
+	webServerRouter := mux.NewRouter().StrictSlash(true)
+
 	// Create Run Context
-	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName}
+	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter}
 	// Register and run
 	gruntRegistry := NewGruntRegistry(&runContext)
 
 	// Initialize workers
 	store := CreateStore(&runContext, connectionString, groupName)
-	api := SporeAPI{}
+	api := &SporeAPI{}
+	webserver := &WebServer{}
 	runContext.Store = store
 
-	gruntRegistry.Start(store, api)
+	gruntRegistry.Start(store, api, webserver)
 	return gruntRegistry
 }

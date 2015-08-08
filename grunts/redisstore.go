@@ -8,14 +8,11 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"fmt"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
 const CheckinExpireMs = 3000
-
-const LeadershipCheckinMs = 3000
-const LeadershipExpireMs = 5000
+const LeadershipExpireMs = 3000
 
 func CreateStore(context *types.RunContext, connectionString, group string) types.SporeStore {
 	if strings.HasPrefix(connectionString, "redis://") {
@@ -38,6 +35,7 @@ func wrapError(err error) error {
 
 type RedisStore struct {
 	mu               sync.Mutex
+	ConnMu           sync.Mutex
 	initOnce         sync.Once
 	connectionString string
 	connPool         *redis.Pool
@@ -48,6 +46,7 @@ type RedisStore struct {
 	myMachineID      string
 	rc               *types.RunContext
 	stopCast         utils.SignalCast
+	stopCastMu       sync.Mutex
 }
 
 func (rs RedisStore) keyJoiner(parts ...string) string {
@@ -66,41 +65,19 @@ func (rs RedisStore) typeKey(v interface{}, parts ...string) string {
 }
 
 func (rs RedisStore) runLeaderElection() {
-	checkinDur := time.Millisecond * LeadershipCheckinMs
 	leaderKey := rs.keyJoiner("_redis", "_leader")
-	stopChan := rs.stopCast.Listen()
-	for {
-		select {
-		case <-time.After(checkinDur):
-			conn := rs.GetConn()
-			_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipCheckinMs)
-			utils.HandleError(err)
-			conn.Close()
-		// Todo: what if this fails
-		case <-stopChan:
-			return
-		}
-	}
-
+	conn := rs.GetConn()
+	_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
+	utils.HandleError(err)
+	conn.Close()
+	// Todo: what if this fails
 }
 
 func (rs *RedisStore) runCheckIn() {
-	// TODO FIX
-	checkinDur := time.Millisecond * CheckinEveryMs
-	stopChan := rs.stopCast.Listen()
-	for {
-		select {
-		case <-time.After(checkinDur):
-			conn := rs.GetConn()
-			_, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
-			utils.HandleError(err)
-			conn.Close()
-		case <-stopChan:
-			return
-		}
-
-	}
-
+	conn := rs.GetConn()
+	defer conn.Close()
+	_, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
+	utils.HandleError(err)
 }
 
 func newRedisConnPool(server string) *redis.Pool {
@@ -122,9 +99,20 @@ func newRedisConnPool(server string) *redis.Pool {
 }
 
 func (rs *RedisStore) Run(context *types.RunContext) {
-	go rs.runCheckIn()
-	go rs.runLeaderElection()
-	<-rs.stopCast.Listen()
+	rs.mu.Lock()
+	rs.stopCast = utils.SignalCast{}
+	procName := rs.ProcName()
+	exit := rs.stopCast.Listen(procName + "runWaiter")
+	rs.mu.Unlock()
+	for {
+		select {
+		case <-time.After(time.Millisecond * CheckinEveryMs):
+			rs.runCheckIn()
+			rs.runLeaderElection()
+		case <-exit:
+			return
+		}
+	}
 }
 
 func (rs *RedisStore) setup() {
@@ -139,14 +127,16 @@ func (rs *RedisStore) setup() {
 }
 
 func (rs *RedisStore) GetConn() redis.Conn {
-	rs.initOnce.Do(func() {
-		rs.setup()
-	})
+	rs.ConnMu.Lock()
+	defer rs.ConnMu.Unlock()
+	rs.initOnce.Do(rs.setup)
 	conn := rs.connPool.Get()
 	return conn
 }
 
 func (rs *RedisStore) Stop() {
+	rs.stopCastMu.Lock()
+	defer rs.stopCastMu.Unlock()
 	rs.stopCast.Signal()
 
 }

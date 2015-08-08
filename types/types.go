@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"github.com/gorilla/mux"
 	"net"
 	"reflect"
 	"strings"
@@ -59,11 +60,13 @@ type SporeStore interface {
 }
 
 type RunContext struct {
-	Store       SporeStore
-	MyMachineID string
-	MyIP        net.IP
-	MyType      SporeType
-	MyGroup     string
+	Store           SporeStore
+	MyMachineID     string
+	MyIP            net.IP
+	MyType          SporeType
+	MyGroup         string
+	WebServerBind   string
+	WebServerRouter *mux.Router
 }
 
 type TypeMeta struct {
@@ -94,5 +97,5 @@ func NewMeta(v interface{}) (TypeMeta, error) {
 		err := errors.New("Type not struct or slice")
 		return TypeMeta{}, err
 	}
-	return TypeMeta{IsSlice:isSlice, TypeName: strings.TrimPrefix(typeName, "*")}, nil
+	return TypeMeta{IsSlice: isSlice, TypeName: strings.TrimPrefix(typeName, "*")}, nil
 }
