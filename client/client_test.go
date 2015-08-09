@@ -25,7 +25,7 @@ type ApiTestSuite struct {
 }
 
 func (suite *ApiTestSuite) cleanup() {
-	err := suite.runContext.Store.DeleteAll(cluster.WebApp{})
+	err := suite.runContext.Store.DeleteAll(cluster.App{})
 	suite.Nil(err)
 }
 
@@ -41,8 +41,8 @@ func (suite *ApiTestSuite) TearDownSuite() {
 	suite.cleanup()
 }
 
-func (suite *ApiTestSuite) TestAllWebapps() {
-	webapps, err := suite.Client.GetWebApps()
+func (suite *ApiTestSuite) TestAllApps() {
+	webapps, err := suite.Client.GetApps()
 	suite.Nil(err)
 	suite.Len(webapps, 0)
 
@@ -50,10 +50,10 @@ func (suite *ApiTestSuite) TestAllWebapps() {
 	idsCreated := []string{}
 	for i := 0; i < create; i++ {
 		name := "TESTWEBAPP" + strconv.Itoa(i)
-		suite.Client.CreateWebApp(&cluster.WebApp{ID: name})
+		suite.Client.CreateApp(&cluster.App{ID: name})
 		idsCreated = append(idsCreated, name)
 	}
-	webapps, err = suite.Client.GetWebApps()
+	webapps, err = suite.Client.GetApps()
 	suite.Nil(err)
 	suite.Len(webapps, create)
 	idsRetrieved := []string{}
@@ -65,28 +65,28 @@ func (suite *ApiTestSuite) TestAllWebapps() {
 	suite.EqualValues(idsCreated, idsRetrieved)
 }
 
-func (suite *ApiTestSuite) TestCreateWebapp() {
-	toCreate := &cluster.WebApp{ID: "TESTWEBAPP"}
-	err := suite.Client.CreateWebApp(toCreate)
+func (suite *ApiTestSuite) TestCreateApp() {
+	toCreate := &cluster.App{ID: "TESTWEBAPP"}
+	err := suite.Client.CreateApp(toCreate)
 	suite.Nil(err)
-	overwrite := &cluster.WebApp{ID: "TESTWEBAPP"}
-	err = suite.Client.CreateWebApp(overwrite)
+	overwrite := &cluster.App{ID: "TESTWEBAPP"}
+	err = suite.Client.CreateApp(overwrite)
 	suite.NotNil(err)
 
-	webapp, err := suite.Client.GetWebApp("TESTWEBAPP")
+	webapp, err := suite.Client.GetApp("TESTWEBAPP")
 	suite.Nil(err)
 	suite.Equal(toCreate, webapp)
 }
 
 func (suite *ApiTestSuite) TestDelete() {
-	toCreate := &cluster.WebApp{ID: "TESTWEBAPP"}
-	err := suite.Client.CreateWebApp(toCreate)
+	toCreate := &cluster.App{ID: "TESTWEBAPP"}
+	err := suite.Client.CreateApp(toCreate)
 	suite.Nil(err)
-	_, err = suite.Client.GetWebApp("TESTWEBAPP")
+	_, err = suite.Client.GetApp("TESTWEBAPP")
 	suite.Nil(err)
 
-	suite.Client.DeleteWebApp("TESTWEBAPP")
-	_, err = suite.Client.GetWebApp("TESTWEBAPP")
+	suite.Client.DeleteApp("TESTWEBAPP")
+	_, err = suite.Client.GetApp("TESTWEBAPP")
 	suite.NotNil(err)
 }
 

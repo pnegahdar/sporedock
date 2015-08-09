@@ -9,7 +9,7 @@ import (
 var ApiPrefix = "api/v1"
 var DashPrefix = "dashboard/v1"
 var EntityTypeHome = ""
-var EntityTypeWebapp = "webapp"
+var EntityTypeApp = "app"
 
 var ErrUnparsableRequest = errors.New("The request json could not be parsed. Make sure its in the right format")
 var ErrNoneFound = errors.New("Results returned empty")

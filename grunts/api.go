@@ -23,9 +23,9 @@ type Route struct {
 
 type Routes []Route
 
-var genCreate = map[string]types.Validable{"webapp": &cluster.WebApp{}}
-var genIndex = map[string]types.Validable{"webapp": &cluster.WebApp{}}
-var genDelete = map[string]types.Validable{"webapp": &cluster.WebApp{}}
+var genCreate = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
+var genIndex = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
+var genDelete = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
 
 func frontendDir() string {
 	_, filename, _, _ := runtime.Caller(1)
@@ -159,8 +159,8 @@ func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	genericTypeID := vars["type"]
 	var validable interface{}
 	switch genericTypeID {
-	case "webapp":
-		genericType := []cluster.WebApp{}
+	case types.EntityTypeApp:
+		genericType := []cluster.App{}
 		err := sa.runContext.Store.GetAll(&genericType, 0, types.SentinelEnd)
 		if err != nil {
 			jsonErrorResponse(w, err, 400)

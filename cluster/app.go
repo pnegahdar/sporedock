@@ -7,7 +7,7 @@ import (
 	"github.com/samalba/dockerclient"
 )
 
-type WebApp struct {
+type App struct {
 	Count                   int
 	AttachedEnvs            []string
 	ExtraEnv                map[string]string
@@ -19,7 +19,7 @@ type WebApp struct {
 	Memory                  int
 }
 
-func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
+func (wa App) RestartPolicy() dockerclient.RestartPolicy {
 	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.Image)
 	restartPolicy := dockerclient.RestartPolicy{
 		Name:              policyName,
@@ -28,21 +28,21 @@ func (wa WebApp) RestartPolicy() dockerclient.RestartPolicy {
 	return restartPolicy
 }
 
-func (wa WebApp) HostConfig() dockerclient.HostConfig {
+func (wa App) HostConfig() dockerclient.HostConfig {
 	return dockerclient.HostConfig{
 		PortBindings:  wa.PortBindings(),
 		RestartPolicy: wa.RestartPolicy(),
 	}
 }
 
-func (wa WebApp) PortBindings() map[string][]dockerclient.PortBinding {
+func (wa App) PortBindings() map[string][]dockerclient.PortBinding {
 	anyPort := dockerclient.PortBinding{HostPort: "0"}
 	bindings := map[string][]dockerclient.PortBinding{}
 	bindings[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = []dockerclient.PortBinding{anyPort}
 	return bindings
 }
 
-func (wa WebApp) Env() map[string]string {
+func (wa App) Env() map[string]string {
 	envList := []map[string]string{}
 	for _, env := range wa.AttachedEnvs {
 		envList = append(envList, FindEnv(env).Env)
@@ -51,7 +51,7 @@ func (wa WebApp) Env() map[string]string {
 	return utils.FlattenHashes(envList...)
 }
 
-func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
+func (wa App) ContainerConfig() dockerclient.ContainerConfig {
 	envsForDocker := EnvAsDockerKV(wa.Env())
 	exposedPorts := map[string]struct{}{}
 	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct{}{}
@@ -61,10 +61,10 @@ func (wa WebApp) ContainerConfig() dockerclient.ContainerConfig {
 		ExposedPorts: exposedPorts}
 }
 
-func (wa *WebApp) Validate(rc *types.RunContext) error {
+func (wa *App) Validate(rc *types.RunContext) error {
 	return nil
 }
 
-func (wa *WebApp) GetID() string {
+func (wa *App) GetID() string {
 	return wa.ID
 }

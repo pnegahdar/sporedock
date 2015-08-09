@@ -1,7 +1,6 @@
 package grunts
 
 import (
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
@@ -26,7 +25,6 @@ func (pl Planner) ProcName() string {
 }
 
 func (pl *Planner) Plan(runContext *types.RunContext) {
-	webapps := runContext.Store.GetAll()
 }
 
 func (pl *Planner) Run(runContext *types.RunContext) {
@@ -50,7 +48,6 @@ func (pl *Planner) Stop() {
 }
 
 type Assignment struct {
-	sporeID
 }
 
 type PlanContext struct {
