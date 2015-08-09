@@ -21,10 +21,10 @@ func (be *BatchError) Add(err error) {
 func (be *BatchError) Error() error {
 	be.RLock()
 	defer be.RUnlock()
-	errorString := "Ran into the following errors"
+	errorString := ""
 	if len(be.errors) > 0 {
 		for _, err := range be.errors {
-			errorString = errorString + " -- " + err.Error()
+			errorString = errorString + "--" + err.Error() + "\n"
 		}
 		return errors.New(errorString)
 
