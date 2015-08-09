@@ -16,7 +16,7 @@ type Spore struct {
 	Tags       map[string]string
 }
 
-func (s Spore) Validate() error {
+func (s *Spore) Validate() error {
 	ok := net.ParseIP(s.MemberIP)
 	if ok == nil {
 		return IPParseError

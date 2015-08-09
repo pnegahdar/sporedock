@@ -29,7 +29,7 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 	ws.Lock()
 	defer ws.Unlock()
 	ws.stopCast = utils.SignalCast{}
-	exit := ws.stopCast.Listen("webserverExit")
+	exit, _ := ws.stopCast.Listen()
 	srv := &graceful.Server{
 		Timeout: 1 * time.Second,
 		Server:  &http.Server{Addr: runContext.WebServerBind, Handler: runContext.WebServerRouter},

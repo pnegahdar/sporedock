@@ -6,7 +6,6 @@ import (
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -48,16 +47,16 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 	delayTot := RestartDecaySeconds * runCount
 	gr.runCount[gruntName] = runCount + 1
 	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
-	stopChan := gr.stopCast.Listen("registryGruntRunner" + gruntName + strconv.Itoa(runCount) + "Waiter")
+	exit, _ := gr.stopCast.Listen()
 	gr.Unlock()
 	select {
 	case <-time.After(time.Duration(delayTot) * time.Second):
 		go func() {
 			defer func() {
 				if rec := recover(); rec != nil {
-					utils.LogInfo(fmt.Sprintf("Grunt %v paniced", gruntName))
+					utils.LogWarn(fmt.Sprintf("Grunt %v paniced", gruntName))
 				} else {
-					utils.LogInfo(fmt.Sprintf("Grunt %v exited", gruntName))
+					utils.LogWarn(fmt.Sprintf("Grunt %v exited", gruntName))
 				}
 				gr.Lock()
 				gr.startMe <- gruntName
@@ -66,7 +65,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 			utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
 			grunt.Run(gr.Context)
 		}()
-	case <-stopChan:
+	case <-exit:
 		return
 	}
 }
@@ -76,12 +75,12 @@ func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
 	utils.LogInfo("Runner started.")
 	// Range blocks on startMe channel
 	go func() {
-		stopChan := gr.stopCast.Listen("gruntRegsitryRunnerWaiter")
+		exit, _ := gr.stopCast.Listen()
 		for {
 			select {
 			case gruntToStart := <-gr.startMe:
 				gr.runGrunt(gruntToStart)
-			case <-stopChan:
+			case <-exit:
 				return
 			}
 		}
@@ -101,7 +100,8 @@ func (gr *GruntRegistry) Stop() {
 }
 
 func (gr *GruntRegistry) Wait() {
-	<-gr.stopCast.Listen("registryWaiter")
+	exit, _ := gr.stopCast.Listen()
+	<-exit
 }
 
 func NewGruntRegistry(rc *types.RunContext) *GruntRegistry {
@@ -125,8 +125,9 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	store := CreateStore(&runContext, connectionString, groupName)
 	api := &SporeAPI{}
 	webserver := &WebServer{}
+	planner := &Planner{}
 	runContext.Store = store
 
-	gruntRegistry.Start(store, api, webserver)
+	gruntRegistry.Start(store, api, webserver, planner)
 	return gruntRegistry
 }

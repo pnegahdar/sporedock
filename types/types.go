@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/samalba/dockerclient"
 	"net"
 	"reflect"
 	"strings"
@@ -47,6 +48,21 @@ type Creatable interface {
 type Validable interface {
 	Identifiable
 	Validate(*RunContext) error
+}
+
+type Schedulabe struct {
+	ID        string
+	RunCount  int
+	CPUS      int
+	Memory    int
+	HostPorts map[string]int
+}
+
+type DockerRunable struct {
+	Schedulabe
+	ContainerConfig dockerclient.ContainerConfig
+	HostConfig      dockerclient.HostConfig
+	RestartPolicy   dockerclient.RestartPolicy
 }
 
 type SporeStore interface {

@@ -13,21 +13,22 @@ type SignalCast struct {
 	listeners      map[string]chan bool
 }
 
-func (sc *SignalCast) Listen(name string) chan bool {
+func (sc *SignalCast) Listen() (chan bool, string) {
 	sc.Lock()
 	defer sc.Unlock()
 	sc.init()
-	ret := make(chan bool, 1)
+	ret := make(chan bool, 3)
 	if sc.alreadyFlipped {
 		ret <- true
 	}
+	name := GenGuid()
 	_, ok := sc.listeners[name]
 	if !ok {
 		sc.listeners[name] = ret
 	} else {
 		HandleError(errors.New("Duplicate handler added" + sc.name))
 	}
-	return ret
+	return ret, name
 }
 
 func (sc *SignalCast) init() {

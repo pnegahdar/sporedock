@@ -101,8 +101,7 @@ func newRedisConnPool(server string) *redis.Pool {
 func (rs *RedisStore) Run(context *types.RunContext) {
 	rs.mu.Lock()
 	rs.stopCast = utils.SignalCast{}
-	procName := rs.ProcName()
-	exit := rs.stopCast.Listen(procName + "runWaiter")
+	exit, _ := rs.stopCast.Listen()
 	rs.mu.Unlock()
 	for {
 		select {

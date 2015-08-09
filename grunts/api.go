@@ -103,7 +103,7 @@ func (sa *SporeAPI) Run(runContext *types.RunContext) {
 		func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, frontendSubDir("index.html"))
 		})
-	exit := sa.stopCast.Listen(sa.ProcName() + "RunWait")
+	exit, _ := sa.stopCast.Listen()
 	sa.Unlock()
 	<-exit
 }
