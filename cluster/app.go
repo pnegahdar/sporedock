@@ -9,6 +9,7 @@ import (
 
 type App struct {
 	Count                   int
+	Scheduler               string
 	AttachedEnvs            []string
 	ExtraEnv                map[string]string
 	Tags                    map[string]string

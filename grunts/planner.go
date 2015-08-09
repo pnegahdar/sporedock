@@ -1,6 +1,7 @@
 package grunts
 
 import (
+	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
@@ -47,8 +48,7 @@ func (pl *Planner) Stop() {
 	pl.stopCast.Signal()
 }
 
-type Assignment struct {
-}
-
-type PlanContext struct {
+type Director struct {
+	LastAssignments map[string]cluster.Assignment
+	Apps            []cluster.App
 }

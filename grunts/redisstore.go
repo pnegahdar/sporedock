@@ -2,6 +2,7 @@ package grunts
 
 import (
 	"github.com/garyburd/redigo/redis"
+	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
@@ -11,7 +12,7 @@ import (
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
-const CheckinExpireMs = 3000
+const CheckinExpireMs = 5000
 const LeadershipExpireMs = 3000
 
 func CreateStore(context *types.RunContext, connectionString, group string) types.SporeStore {
@@ -41,7 +42,6 @@ type RedisStore struct {
 	connPool         *redis.Pool
 	group            string
 	myIP             net.IP
-	amLeader         bool
 	myType           types.SporeType
 	myMachineID      string
 	rc               *types.RunContext
@@ -65,18 +65,41 @@ func (rs RedisStore) typeKey(v interface{}, parts ...string) string {
 }
 
 func (rs RedisStore) runLeaderElection() {
-	leaderKey := rs.keyJoiner("_redis", "_leader")
-	conn := rs.GetConn()
-	_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
+	if rs.myType != types.TypeSporeWatcher {
+		leaderKey := rs.keyJoiner("_redis", "_leader")
+		conn := rs.GetConn()
+		defer conn.Close()
+		_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
+		utils.HandleError(err)
+	}
+}
+
+func (rs *RedisStore) runPruning() {
+	spores := []cluster.Spore{}
+	err := rs.GetAll(&spores, 0, types.SentinelEnd)
 	utils.HandleError(err)
-	conn.Close()
-	// Todo: what if this fails
+	for _, spore := range spores {
+		healthy, err := rs.IsHealthy(spore)
+		utils.HandleError(err)
+		if !healthy {
+			utils.LogWarn("Spore" + spore.ID + "looks dead, purning.")
+			err := rs.Delete(spore, spore.ID)
+			utils.HandleError(err)
+		}
+	}
+
 }
 
 func (rs *RedisStore) runCheckIn() {
 	conn := rs.GetConn()
 	defer conn.Close()
-	_, err := conn.Do("PSETEX", rs.myMachineID, CheckinExpireMs, "1")
+	memberKey := rs.keyJoiner("_redis", "_member", rs.myMachineID)
+	spore := cluster.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
+	err := rs.Set(spore, spore.ID, types.SentinelEnd)
+	if err != types.ErrIDExists {
+		utils.HandleError(err)
+	}
+	_, err = conn.Do("SET", memberKey, rs.myMachineID, "PX", CheckinExpireMs)
 	utils.HandleError(err)
 }
 
@@ -108,6 +131,7 @@ func (rs *RedisStore) Run(context *types.RunContext) {
 		case <-time.After(time.Millisecond * CheckinEveryMs):
 			rs.runCheckIn()
 			rs.runLeaderElection()
+			rs.runPruning()
 		case <-exit:
 			return
 		}
@@ -242,6 +266,18 @@ func (rs RedisStore) DeleteAll(v interface{}) error {
 	defer conn.Close()
 	_, err := conn.Do("DEL", rs.typeKey(v))
 	return wrapError(err)
+}
+
+func (rs RedisStore) IsHealthy(s cluster.Spore) (bool, error) {
+	conn := rs.GetConn()
+	defer conn.Close()
+	memberKey := rs.keyJoiner("_redis", "_member", s.ID)
+	resp, err := conn.Do("EXISTS", memberKey)
+	exists, err := redis.Bool(resp, err)
+	if err != nil {
+		return false, wrapError(err)
+	}
+	return exists, nil
 }
 
 func NewRedisStore(context *types.RunContext, redisConnecitonURI, group string) types.SporeStore {
