@@ -6,6 +6,7 @@ import (
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -47,7 +48,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 	delayTot := RestartDecaySeconds * runCount
 	gr.runCount[gruntName] = runCount + 1
 	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
-	stopChan := gr.stopCast.Listen("registryGruntRunner" + gruntName + string(runCount) + "Waiter")
+	stopChan := gr.stopCast.Listen("registryGruntRunner" + gruntName + strconv.Itoa(runCount) + "Waiter")
 	gr.Unlock()
 	select {
 	case <-time.After(time.Duration(delayTot) * time.Second):

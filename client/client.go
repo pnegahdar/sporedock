@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"github.com/parnurzeal/gorequest"
 	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
@@ -13,19 +14,9 @@ import (
 )
 
 type ClientResponse struct {
-	HttpReposne       *http.Response
-	Content           string
-	SporeDockResponse types.Response
-}
-
-func parseResp(resp *http.Response) ClientResponse {
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	utils.HandleError(err)
-	cr := ClientResponse{HttpReposne: resp, Content: string(body), SporeDockResponse: types.Response{}}
-	err = utils.Unmarshall(cr.Content, &cr.SporeDockResponse)
-	utils.HandleError(err)
-	return cr
+	HttpResponse *http.Response
+	Content      string
+	Response     types.Response
 }
 
 type Client struct {
@@ -35,31 +26,64 @@ type Client struct {
 	VersionPrefix string // Thee addon stuff before the entity, i.e V1
 }
 
-func (cl Client) fullUrl(entityName, queryString string) string {
-	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, types.GetGenApiRoute(entityName))
+func (cl Client) fullGenUrl(route, queryString string) string {
+	noqs := fmt.Sprintf("%v://%v:%v%v", cl.Scheme, cl.Host, cl.Port, route)
 	if queryString == "" {
 		return noqs
 	}
-	return fmt.Sprintf("%v?%v", queryString)
+	return fmt.Sprintf("%v?%v", noqs, queryString)
 }
 
-func (cl Client) get(entityName string, urlParams url.Values) ClientResponse {
-	url := cl.fullUrl(entityName, urlParams.Encode())
+func (cl Client) get(url string, urlParams url.Values) (ClientResponse, *utils.BatchError) {
+	batchError := &utils.BatchError{}
 	resp, err := http.Get(url)
-	utils.HandleError(err)
-	return parseResp(resp)
+	batchError.Add(err)
+	cr, err := parseResp(resp)
+	batchError.Add(err)
+	if cr.Response.Error != "" {
+		batchError.Add(errors.New(cr.Response.Error))
+	}
+	return cr, batchError
 }
 
-func (cl Client) postjson(obj interface{}) ClientResponse {
-	fullRoute := cl.fullUrl("webapp", "")
-	objstr, err := utils.Marshall(obj)
-	utils.HandleError(err)
+func (cl Client) post(url string, jsonInterface interface{}) (ClientResponse, *utils.BatchError) {
+	batchError := &utils.BatchError{}
+	objstr, err := utils.Marshall(jsonInterface)
+	batchError.Add(err)
 	reqObject := types.JsonRequest{Data: objstr}
 	body, err := utils.Marshall(reqObject)
-	utils.HandleError(err)
-	resp, err := http.Post(fullRoute, "application/json", strings.NewReader(body))
-	utils.HandleError(err)
-	return parseResp(resp)
+	batchError.Add(err)
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	batchError.Add(err)
+	cr, err := parseResp(resp)
+	batchError.Add(err)
+	if cr.Response.Error != "" {
+		batchError.Add(errors.New(cr.Response.Error))
+	}
+	return cr, batchError
+}
+
+func (cl Client) delete(url string, urlParams url.Values) (ClientResponse, *utils.BatchError) {
+	batchError := &utils.BatchError{}
+	req := gorequest.New()
+	resp, _, errs := req.Delete(url).End()
+	for _, err := range errs {
+		batchError.Add(err)
+	}
+	cr, err := parseResp(resp)
+	batchError.Add(err)
+	if cr.Response.Error != "" {
+		batchError.Add(errors.New(cr.Response.Error))
+	}
+	return cr, batchError
+}
+
+func parseResp(resp *http.Response) (ClientResponse, error) {
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	cr := ClientResponse{HttpResponse: resp, Content: string(body), Response: types.Response{}}
+	err := utils.Unmarshall(cr.Content, &cr.Response)
+	return cr, err
 }
 
 func NewClient(host string, port int) *Client {
@@ -73,32 +97,61 @@ func NewHttpsClient(host string, port int) *Client {
 	return client
 }
 
-func (cl Client) GetHome() (string, error) {
-	resp := cl.get(types.EntityTypeHome, nil)
-	if resp.SporeDockResponse.IsError() {
-		return "", errors.New(resp.SporeDockResponse.Error)
-	}
-	return resp.Content, nil
+func (cl Client) GetGeneric(unpack interface{}, genType string, id string) error {
+	url := cl.fullGenUrl(types.GetGenApiRoute(genType, id), "")
+	cr, batchErr := cl.get(url, nil)
+	backToString, err := utils.Marshall(cr.Response.Data)
+	batchErr.Add(err)
+	err = utils.Unmarshall(backToString, unpack)
+	batchErr.Add(err)
+	return batchErr.Error()
 }
 
+func (cl Client) GetAllGeneric(unpack interface{}, genType string) error {
+	url := cl.fullGenUrl(types.GetGenApiRoute(genType), "")
+	cr, batchErr := cl.get(url, nil)
+	backToString, err := utils.Marshall(cr.Response.Data)
+	batchErr.Add(err)
+	err = utils.Unmarshall(backToString, unpack)
+	batchErr.Add(err)
+	return batchErr.Error()
+}
+
+func (cl Client) DeleteGeneric(genType string, id string) error {
+	url := cl.fullGenUrl(types.GetGenApiRoute(genType, id), "")
+	_, batchErr := cl.delete(url, nil)
+	return batchErr.Error()
+}
+
+func (cl Client) CreateGeneric(unpack interface{}, genType string) error {
+	url := cl.fullGenUrl(types.GetGenApiRoute(genType), "")
+	cr, batchErr := cl.post(url, unpack)
+	backToString, err := utils.Marshall(cr.Response.Data)
+	batchErr.Add(err)
+	err = utils.Unmarshall(backToString, unpack)
+	batchErr.Add(err)
+	return batchErr.Error()
+}
+
+//WEBAPP
 func (cl Client) GetWebApps() ([]cluster.WebApp, error) {
 	webapps := []cluster.WebApp{}
-	resp := cl.get(types.EntityTypeWebapp, nil)
-	if resp.SporeDockResponse.IsError() {
-		return webapps, errors.New(resp.SporeDockResponse.Error)
-
-	}
-	toConvert := resp.SporeDockResponse.Data.([]interface{})
-	for _, wa := range toConvert {
-		webapps = append(webapps, wa.(cluster.WebApp))
-	}
-	return webapps, nil
+	err := cl.GetAllGeneric(&webapps, types.EntityTypeWebapp)
+	return webapps, err
 }
 
-func (cl Client) CreateWebApp(webapp cluster.WebApp) (cluster.WebApp, error) {
-	resp := cl.postjson(webapp)
-	if resp.SporeDockResponse.IsError() {
-		return webapp, errors.New(resp.SporeDockResponse.Error)
-	}
-	return webapp, nil
+func (cl Client) GetWebApp(id string) (*cluster.WebApp, error) {
+	webapps := &cluster.WebApp{}
+	err := cl.GetGeneric(webapps, types.EntityTypeWebapp, id)
+	return webapps, err
+}
+
+func (cl Client) CreateWebApp(webapp *cluster.WebApp) error {
+	err := cl.CreateGeneric(webapp, types.EntityTypeWebapp)
+	return err
+}
+
+func (cl Client) DeleteWebApp(id string) error {
+	err := cl.DeleteGeneric(types.EntityTypeWebapp, id)
+	return err
 }

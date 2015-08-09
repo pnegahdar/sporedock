@@ -205,7 +205,6 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 		jsonErrorResponse(w, err, 400)
 		return
 	}
-
 	err = creatable.Validate(sa.runContext)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)

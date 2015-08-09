@@ -44,7 +44,7 @@ type JsonRequest struct {
 	Data string `json:"data"`
 }
 
-func (rs Response) IsError() bool {
+func (rs *Response) IsError() bool {
 	return rs.Error != "" || rs.StatusCode >= 400
 
 }

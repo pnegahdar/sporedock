@@ -188,7 +188,7 @@ func TestAllStores(t *testing.T) {
 	storeTest := GenericStoreTestSuite{}
 	storesToTest := []string{"redis://localhost:6379"}
 	for _, store := range storesToTest {
-		run := CreateAndRun(store, "testGroup", "myMachine", "127.0.0.1")
+		run := CreateAndRun(store, "testGroup", "myMachine", "127.0.0.1", ":5000")
 		storeTest.registry = run
 		suite.Run(t, &storeTest)
 		run.Stop()
