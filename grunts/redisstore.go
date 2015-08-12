@@ -79,7 +79,7 @@ func (rs *RedisStore) runPruning() {
 	err := rs.GetAll(&spores, 0, types.SentinelEnd)
 	utils.HandleError(err)
 	for _, spore := range spores {
-		healthy, err := rs.IsHealthy(spore)
+		healthy, err := rs.IsHealthy(spore.ID)
 		utils.HandleError(err)
 		if !healthy {
 			utils.LogWarn("Spore" + spore.ID + "looks dead, purning.")
@@ -94,8 +94,15 @@ func (rs *RedisStore) runCheckIn() {
 	conn := rs.GetConn()
 	defer conn.Close()
 	memberKey := rs.keyJoiner("_redis", "_member", rs.myMachineID)
+	leader, err := rs.LeaderName()
+	utils.HandleError(err)
+	if leader == rs.myMachineID {
+		rs.mu.Lock()
+		rs.myType = types.TypeSporeLeader
+		rs.mu.Unlock()
+	}
 	spore := cluster.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
-	err := rs.Set(spore, spore.ID, types.SentinelEnd)
+	err = rs.Update(spore, spore.ID, types.SentinelEnd)
 	if err != types.ErrIDExists {
 		utils.HandleError(err)
 	}
@@ -129,8 +136,8 @@ func (rs *RedisStore) Run(context *types.RunContext) {
 	for {
 		select {
 		case <-time.After(time.Millisecond * CheckinEveryMs):
-			rs.runCheckIn()
 			rs.runLeaderElection()
+			rs.runCheckIn()
 			rs.runPruning()
 		case <-exit:
 			return
@@ -218,7 +225,7 @@ func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 	return nil
 }
 
-func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
+func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
 	typeKey := rs.typeKey(v)
 	data, err := utils.Marshall(v)
 	if err != nil {
@@ -229,7 +236,11 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 	}
 	conn := rs.GetConn()
 	defer conn.Close()
-	wasSet, err := redis.Int(conn.Do("HSETNX", typeKey, id, data))
+	op := "HSET"
+	if !update {
+		op = "HSETNX"
+	}
+	wasSet, err := redis.Int(conn.Do(op, typeKey, id, data))
 	if err != nil {
 		return wrapError(err)
 	}
@@ -251,6 +262,14 @@ func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
 	}
 }
 
+func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
+	return rs.safeSet(v, id, logTrim, false)
+}
+
+func (rs RedisStore) Update(v interface{}, id string, logTrim int) error {
+	return rs.safeSet(v, id, logTrim, true)
+}
+
 func (rs RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
@@ -268,16 +287,24 @@ func (rs RedisStore) DeleteAll(v interface{}) error {
 	return wrapError(err)
 }
 
-func (rs RedisStore) IsHealthy(s cluster.Spore) (bool, error) {
+func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
-	memberKey := rs.keyJoiner("_redis", "_member", s.ID)
+	memberKey := rs.keyJoiner("_redis", "_member", sporeName)
 	resp, err := conn.Do("EXISTS", memberKey)
 	exists, err := redis.Bool(resp, err)
 	if err != nil {
 		return false, wrapError(err)
 	}
 	return exists, nil
+}
+
+func (rs RedisStore) LeaderName() (string, error) {
+	leaderKey := rs.keyJoiner("_redis", "_leader")
+	conn := rs.GetConn()
+	defer conn.Close()
+	name, err := redis.String(conn.Do("GET", leaderKey))
+	return name, wrapError(err)
 }
 
 func NewRedisStore(context *types.RunContext, redisConnecitonURI, group string) types.SporeStore {

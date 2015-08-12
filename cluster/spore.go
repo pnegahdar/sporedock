@@ -23,37 +23,42 @@ func (s *Spore) Validate() error {
 	return nil
 }
 
-//func Members(rc grunts.RunContext) []Spore {
-//	sporeType := Spore{}
-//	return store.CurrentStore.GetAll(sporeType).([]Spore)
-//}
-//
-//func Leader() Spore {
-//	// Todo: Don't scan all
-//	members := Members("YO")
-//	for _, member := range members {
-//		if member.MemberType == TypeSporeLeader {
-//			return member
-//		}
-//	}
-//	return nil
-//}
-//
-//func Me() Spore {
-//	members := Members()
-//	for _, member := range members {
-//		if member.Name == store.CurrentStore.MyID() {
-//			return member
-//		}
-//
-//	}
-//	return nil
-//}
-//
-//func AmLeader() bool {
-//	leader := Leader()
-//	if leader.Name == store.CurrentStore.MyID() {
-//		return true
-//	}
-//	return false
-//}
+func AllSpores(rc *types.RunContext) (*[]Spore, error) {
+	sporeType := []Spore{}
+	err := rc.Store.GetAll(&sporeType, 0, types.SentinelEnd)
+	if err != nil {
+		return nil, err
+	}
+	return &sporeType, err
+}
+
+func LeaderSpore(rc *types.RunContext) (*Spore, error) {
+	spore := &Spore{}
+	leaderName, err := rc.Store.LeaderName()
+	if err != nil {
+		return nil, err
+	}
+	err = rc.Store.Get(spore, leaderName)
+	if err != nil {
+		return nil, err
+	}
+	return spore, nil
+}
+
+func MySpore(rc *types.RunContext) (*Spore, error) {
+	spore := &Spore{}
+	err := rc.Store.Get(spore, rc.MyMachineID)
+	if err != nil {
+		return nil, err
+	}
+	return spore, nil
+}
+
+func AmLeader(rc *types.RunContext) (bool, error) {
+	leaderName, err := rc.Store.LeaderName()
+	if err != nil {
+		return false, err
+	}
+	return rc.MyMachineID == leaderName, nil
+
+}

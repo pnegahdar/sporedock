@@ -54,9 +54,12 @@ type SporeStore interface {
 	Get(i interface{}, id string) error
 	GetAll(v interface{}, start int, end int) error
 	Set(v interface{}, id string, logTrim int) error
+	Update(v interface{}, id string, logTrim int) error
 	Exists(v interface{}, id string) (bool, error)
 	Delete(v interface{}, id string) error
 	DeleteAll(v interface{}) error
+	IsHealthy(sporeName string) (bool, error)
+	LeaderName() (string, error)
 }
 
 type RunContext struct {
@@ -93,6 +96,9 @@ func NewMeta(v interface{}) (TypeMeta, error) {
 	case reflect.Interface:
 		isSlice = false
 		typeName = fmt.Sprint(reflect.ValueOf(v).Elem().Elem().Type())
+	case reflect.String, reflect.Int, reflect.Bool:
+		isSlice = false
+		typeName = fmt.Sprint(typeof)
 	default:
 		err := errors.New("Type not struct or slice")
 		return TypeMeta{}, err
