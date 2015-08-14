@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+type StringType string
+
 type TestApp struct {
 	name string
 }
@@ -52,6 +54,12 @@ func (suite *TypesTestSuite) TestTypeMetaExtractor() {
 	meta, err = NewMeta(&appInterface)
 	suite.Nil(err)
 	suite.Equal(TypeMeta{IsSlice: false, TypeName: "types.TestApp"}, meta)
+
+	basicTypeTest := StringType("Yo")
+	meta, err = NewMeta(basicTypeTest)
+	suite.Nil(err)
+	suite.Equal(TypeMeta{IsSlice: false, TypeName: "types.StringType"}, meta)
+
 }
 
 func TestTypesTestSuite(t *testing.T) {

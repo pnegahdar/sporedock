@@ -49,6 +49,17 @@ type Validable interface {
 	Validate(*RunContext) error
 }
 
+const CpuMemMultiplier = 1 / 512
+
+type Sizable struct {
+	Cpus   int
+	Memory int
+}
+
+func GetSize(cpu int, mem int) float64 {
+	return float64(cpu) + (float64(mem) * CpuMemMultiplier)
+}
+
 type SporeStore interface {
 	Grunt
 	Get(i interface{}, id string) error

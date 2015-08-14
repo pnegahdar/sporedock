@@ -10,14 +10,22 @@ import (
 type App struct {
 	Count                   int
 	Scheduler               string
+	PinSpore                string
 	AttachedEnvs            []string
 	ExtraEnv                map[string]string
 	Tags                    map[string]string
 	ID                      string
 	Image                   string
 	BalancedInternalTCPPort int
-	Cpus                    int
-	Memory                  int
+	types.Sizable
+}
+
+type Apps []App
+
+func (a Apps) Len() int      { return len(a) }
+func (a Apps) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a Apps) Less(i, j int) bool {
+	return types.GetSize(a[i].Cpus, a[i].Memory) < types.GetSize(a[j].Cpus, a[j].Memory)
 }
 
 func (wa App) RestartPolicy() dockerclient.RestartPolicy {
@@ -68,4 +76,13 @@ func (wa *App) Validate(rc *types.RunContext) error {
 
 func (wa *App) GetID() string {
 	return wa.ID
+}
+
+func AllApps(runContext *types.RunContext) ([]App, error) {
+	apps := []App{}
+	err := runContext.Store.GetAll(&apps, 0, types.SentinelEnd)
+	if err != nil {
+		return nil, err
+	}
+	return apps, nil
 }

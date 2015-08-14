@@ -184,6 +184,7 @@ func (suite *GenericStoreTestSuite) TestDeleteAll() {
 	suite.Nil(err)
 }
 
+// TODO: ishealthy and update, and leadername tests
 func TestAllStores(t *testing.T) {
 	storeTest := GenericStoreTestSuite{}
 	storesToTest := []string{"redis://localhost:6379"}
