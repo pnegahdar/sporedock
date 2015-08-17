@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const PlanEveryMs = 3000
+const PlanEveryMs = 10000
 
 type Planner struct {
 	sync.Mutex
@@ -28,33 +28,32 @@ func (pl Planner) ProcName() string {
 }
 
 func (pl *Planner) Plan(runContext *types.RunContext) {
-	allApps, err := cluster.AllApps(runContext)
-	sort.Sort(cluster.Apps(allApps))
-	if err == types.ErrNoneFound {
-		return
-	}
-	utils.HandleError(err)
-	allSpores, err := cluster.AllSporesMap(runContext)
-	if err == types.ErrNoneFound {
-		return
-	}
-	utils.HandleError(err)
 	currentPlan, err := cluster.CurrentPlan(runContext)
 	if err == types.ErrNoneFound {
 		currentPlan = nil
 	} else {
 		utils.HandleError(err)
 	}
-	newPlan := &cluster.Plan{Spores: allSpores}
+	newPlan, err := cluster.NewPlan(runContext)
+	if err == types.ErrNoneFound {
+		return
+	}
+	utils.HandleError(err)
+	allApps, err := cluster.AllApps(runContext)
+	sort.Sort(cluster.Apps(allApps))
+	if err == types.ErrNoneFound {
+		return
+	}
+	sort.Sort(cluster.Apps(allApps))
 	for _, app := range allApps {
 		scheduled := false
+		// Todo: exclude repeat
 		for _, fn := range cluster.Schedulers {
-			done, err := fn(&app, runContext, currentPlan, newPlan)
+			scheduled, err = fn(&app, runContext, currentPlan, newPlan)
 			if err != nil {
 				cluster.HandleSchedulerError(err, app.ID, fmt.Sprintf("%v", fn))
 			}
-			if done {
-				scheduled = done
+			if scheduled {
 				break
 			}
 		}
@@ -65,17 +64,24 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 			}
 		}
 	}
-	cluster.SavePlan(runContext, newPlan)
+	err = cluster.SavePlan(runContext, newPlan)
+	utils.HandleError(err)
 }
 
 func (pl *Planner) Run(runContext *types.RunContext) {
-	pl.Lock()
-	defer pl.Unlock()
 	exit, _ := pl.stopCast.Listen()
 	for {
 		select {
 		case <-time.After(time.Millisecond * PlanEveryMs):
-			pl.Plan(runContext)
+			amLeader, err := cluster.AmLeader(runContext)
+			if err == types.ErrNoneFound {
+				continue
+			}
+			utils.HandleError(err)
+			if amLeader {
+				pl.Plan(runContext)
+			}
+		// Todo: Also bind the app create/delete event
 		case <-exit:
 			return
 		}

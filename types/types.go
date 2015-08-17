@@ -52,12 +52,12 @@ type Validable interface {
 const CpuMemMultiplier = 1 / 512
 
 type Sizable struct {
-	Cpus   int
-	Memory int
+	Cpus float64
+	Mem  float64
 }
 
-func GetSize(cpu int, mem int) float64 {
-	return float64(cpu) + (float64(mem) * CpuMemMultiplier)
+func GetSize(cpu float64, mem float64) float64 {
+	return cpu + (mem * CpuMemMultiplier)
 }
 
 type SporeStore interface {

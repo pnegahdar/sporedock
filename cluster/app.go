@@ -20,12 +20,16 @@ type App struct {
 	types.Sizable
 }
 
+func (a App) Size() float64 {
+	return types.GetSize(a.Cpus, a.Mem)
+}
+
 type Apps []App
 
 func (a Apps) Len() int      { return len(a) }
 func (a Apps) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a Apps) Less(i, j int) bool {
-	return types.GetSize(a[i].Cpus, a[i].Memory) < types.GetSize(a[j].Cpus, a[j].Memory)
+	return types.GetSize(a[i].Cpus, a[i].Mem) < types.GetSize(a[j].Cpus, a[j].Mem)
 }
 
 func (wa App) RestartPolicy() dockerclient.RestartPolicy {
@@ -61,6 +65,7 @@ func (wa App) Env() map[string]string {
 }
 
 func (wa App) ContainerConfig() dockerclient.ContainerConfig {
+	// Todo: cpus and memory
 	envsForDocker := EnvAsDockerKV(wa.Env())
 	exposedPorts := map[string]struct{}{}
 	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct{}{}

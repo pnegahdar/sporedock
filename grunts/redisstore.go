@@ -133,6 +133,8 @@ func (rs *RedisStore) Run(context *types.RunContext) {
 	rs.stopCast = utils.SignalCast{}
 	exit, _ := rs.stopCast.Listen()
 	rs.mu.Unlock()
+	rs.runLeaderElection()
+	rs.runCheckIn()
 	for {
 		select {
 		case <-time.After(time.Millisecond * CheckinEveryMs):
@@ -157,8 +159,6 @@ func (rs *RedisStore) setup() {
 }
 
 func (rs *RedisStore) GetConn() redis.Conn {
-	rs.ConnMu.Lock()
-	defer rs.ConnMu.Unlock()
 	rs.initOnce.Do(rs.setup)
 	conn := rs.connPool.Get()
 	return conn
@@ -226,6 +226,8 @@ func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 }
 
 func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
+	conn := rs.GetConn()
+	defer conn.Close()
 	typeKey := rs.typeKey(v)
 	data, err := utils.Marshall(v)
 	if err != nil {
@@ -234,8 +236,6 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 	if id == "" {
 		return types.ErrIDEmpty
 	}
-	conn := rs.GetConn()
-	defer conn.Close()
 	op := "HSET"
 	if !update {
 		op = "HSETNX"
@@ -244,7 +244,7 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 	if err != nil {
 		return wrapError(err)
 	}
-	if wasSet == 1 {
+	if wasSet == 1 || update {
 		logKey := rs.typeKey(v, "__log")
 		_, err = conn.Do("LPUSH", logKey, data)
 		if err != nil {

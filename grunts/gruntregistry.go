@@ -6,6 +6,7 @@ import (
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -55,6 +56,7 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 			defer func() {
 				if rec := recover(); rec != nil {
 					utils.LogWarn(fmt.Sprintf("Grunt %v paniced", gruntName))
+					debug.PrintStack()
 				} else {
 					utils.LogWarn(fmt.Sprintf("Grunt %v exited", gruntName))
 				}

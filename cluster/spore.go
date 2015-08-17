@@ -13,8 +13,7 @@ type Spore struct {
 	MemberIP   string
 	MemberType types.SporeType
 	Tags       map[string]string
-	Cpus       int
-	Mem        int
+	types.Sizable
 }
 
 func (s Spore) Size() float64 {
@@ -42,18 +41,6 @@ func AllSpores(rc *types.RunContext) (Spores, error) {
 		return nil, err
 	}
 	return Spores(sporeType), err
-}
-
-func AllSporesMap(runContext *types.RunContext) (map[string]*Spore, error) {
-	sporeMap := map[string]*Spore{}
-	spores, err := AllSpores(runContext)
-	if err != nil {
-		return sporeMap, err
-	}
-	for _, spore := range spores {
-		sporeMap[spore.ID] = &spore
-	}
-	return sporeMap, nil
 }
 
 func LeaderSpore(rc *types.RunContext) (*Spore, error) {
