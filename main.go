@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	logging "github.com/op/go-logging"
 	"github.com/pnegahdar/sporedock/grunts"
 	"github.com/pnegahdar/sporedock/utils"
 	"os"
 	"os/signal"
 	"runtime"
-	"fmt"
 )
 
 func main() {
@@ -27,5 +27,6 @@ func main() {
 		os.Exit(1)
 	}()
 	gr.Wait()
-	for {}
+	for {
+	}
 }

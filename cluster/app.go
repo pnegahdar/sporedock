@@ -2,9 +2,9 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
-	"github.com/samalba/dockerclient"
 )
 
 type App struct {
@@ -32,27 +32,29 @@ func (a Apps) Less(i, j int) bool {
 	return types.GetSize(a[i].Cpus, a[i].Mem) < types.GetSize(a[j].Cpus, a[j].Mem)
 }
 
-func (wa App) RestartPolicy() dockerclient.RestartPolicy {
-	policyName := fmt.Sprintf("SporedockRestartPolicy%vImage%v", wa.ID, wa.Image)
-	restartPolicy := dockerclient.RestartPolicy{
+func (wa App) DockerContainerOptions(runContext *types.RunContext, guid RunGuid) docker.CreateContainerOptions {
+	namePrefix := runContext.NamespacePrefix("", string(guid))
+	policyName := fmt.Sprintf("%vRP", namePrefix)
+	restartPolicy := docker.RestartPolicy{
 		Name:              policyName,
 		MaximumRetryCount: 5,
 	}
-	return restartPolicy
-}
-
-func (wa App) HostConfig() dockerclient.HostConfig {
-	return dockerclient.HostConfig{
-		PortBindings:  wa.PortBindings(),
-		RestartPolicy: wa.RestartPolicy(),
+	anyPort := docker.PortBinding{HostPort: "0"}
+	elbPort := docker.Port(fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort))
+	bindings := map[docker.Port][]docker.PortBinding{
+		elbPort: []docker.PortBinding{anyPort}}
+	hostConfig := &docker.HostConfig{
+		PortBindings:  bindings,
+		RestartPolicy: restartPolicy,
 	}
-}
-
-func (wa App) PortBindings() map[string][]dockerclient.PortBinding {
-	anyPort := dockerclient.PortBinding{HostPort: "0"}
-	bindings := map[string][]dockerclient.PortBinding{}
-	bindings[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = []dockerclient.PortBinding{anyPort}
-	return bindings
+	envsForDocker := EnvAsDockerKV(wa.Env())
+	exposedPorts := map[docker.Port]struct{}{
+		elbPort: struct{}{}}
+	containerConfig := &docker.Config{
+		Env:          envsForDocker,
+		Image:        wa.Image,
+		ExposedPorts: exposedPorts}
+	return docker.CreateContainerOptions{Name: namePrefix, Config: containerConfig, HostConfig: hostConfig}
 }
 
 func (wa App) Env() map[string]string {
@@ -62,17 +64,6 @@ func (wa App) Env() map[string]string {
 	}
 	envList = append(envList, wa.ExtraEnv)
 	return utils.FlattenHashes(envList...)
-}
-
-func (wa App) ContainerConfig() dockerclient.ContainerConfig {
-	// Todo: cpus and memory
-	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[string]struct{}{}
-	exposedPorts[fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort)] = struct{}{}
-	return dockerclient.ContainerConfig{
-		Env:          envsForDocker,
-		Image:        wa.Image,
-		ExposedPorts: exposedPorts}
 }
 
 func (wa *App) Validate(rc *types.RunContext) error {

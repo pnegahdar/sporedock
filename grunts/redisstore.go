@@ -49,24 +49,21 @@ type RedisStore struct {
 	stopCastMu       sync.Mutex
 }
 
-func (rs RedisStore) keyJoiner(parts ...string) string {
-	items := []string{"sporedock", rs.group}
-	for _, part := range parts {
-		items = append(items, part)
-	}
+func (rs RedisStore) keyJoiner(runContext *types.RunContext, parts ...string) string {
+	items := append(runContext.NamespacePrefixParts(), parts...)
 	return strings.Join(items, ":")
 }
 
-func (rs RedisStore) typeKey(v interface{}, parts ...string) string {
+func (rs RedisStore) typeKey(runContext *types.RunContext, v interface{}, parts ...string) string {
 	meta, err := types.NewMeta(v)
 	utils.HandleError(err)
 	parts = append([]string{meta.TypeName}, parts...)
-	return rs.keyJoiner(parts...)
+	return rs.keyJoiner(runContext, parts...)
 }
 
 func (rs RedisStore) runLeaderElection() {
 	if rs.myType != types.TypeSporeWatcher {
-		leaderKey := rs.keyJoiner("_redis", "_leader")
+		leaderKey := rs.keyJoiner(rs.rc, "_redis", "_leader")
 		conn := rs.GetConn()
 		defer conn.Close()
 		_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
@@ -93,7 +90,8 @@ func (rs *RedisStore) runPruning() {
 func (rs *RedisStore) runCheckIn() {
 	conn := rs.GetConn()
 	defer conn.Close()
-	memberKey := rs.keyJoiner("_redis", "_member", rs.myMachineID)
+	//Todo protect for duped names
+	memberKey := rs.keyJoiner(rs.rc, "_redis", "_member", rs.myMachineID)
 	leader, err := rs.LeaderName()
 	utils.HandleError(err)
 	if leader == rs.myMachineID {
@@ -182,7 +180,7 @@ func (rs RedisStore) ShouldRun(context *types.RunContext) bool {
 func (rs RedisStore) Get(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HGET", rs.typeKey(v), id)
+	resp, err := conn.Do("HGET", rs.typeKey(rs.rc, v), id)
 	data, err := redis.String(resp, err)
 	if err != nil {
 		return wrapError(err)
@@ -197,7 +195,7 @@ func (rs RedisStore) Get(v interface{}, id string) error {
 func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HEXISTS", rs.typeKey(v), id)
+	resp, err := conn.Do("HEXISTS", rs.typeKey(rs.rc, v), id)
 	exists, err := redis.Bool(resp, err)
 	if err != nil {
 		return false, wrapError(err)
@@ -209,7 +207,7 @@ func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
 func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HVALS", rs.typeKey(v))
+	resp, err := conn.Do("HVALS", rs.typeKey(rs.rc, v))
 	data, err := redis.Strings(resp, err)
 	if err != nil {
 		return wrapError(err)
@@ -228,7 +226,7 @@ func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	typeKey := rs.typeKey(v)
+	typeKey := rs.typeKey(rs.rc, v)
 	data, err := utils.Marshall(v)
 	if err != nil {
 		return wrapError(err)
@@ -245,7 +243,7 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 		return wrapError(err)
 	}
 	if wasSet == 1 || update {
-		logKey := rs.typeKey(v, "__log")
+		logKey := rs.typeKey(rs.rc, v, "__log")
 		_, err = conn.Do("LPUSH", logKey, data)
 		if err != nil {
 			return wrapError(err)
@@ -273,7 +271,7 @@ func (rs RedisStore) Update(v interface{}, id string, logTrim int) error {
 func (rs RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(v), id))
+	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(rs.rc, v), id))
 	if exists != 1 {
 		return types.ErrNoneFound
 	}
@@ -283,14 +281,14 @@ func (rs RedisStore) Delete(v interface{}, id string) error {
 func (rs RedisStore) DeleteAll(v interface{}) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	_, err := conn.Do("DEL", rs.typeKey(v))
+	_, err := conn.Do("DEL", rs.typeKey(rs.rc, v))
 	return wrapError(err)
 }
 
 func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
-	memberKey := rs.keyJoiner("_redis", "_member", sporeName)
+	memberKey := rs.keyJoiner(rs.rc, "_redis", "_member", sporeName)
 	resp, err := conn.Do("EXISTS", memberKey)
 	exists, err := redis.Bool(resp, err)
 	if err != nil {
@@ -300,7 +298,7 @@ func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 }
 
 func (rs RedisStore) LeaderName() (string, error) {
-	leaderKey := rs.keyJoiner("_redis", "_leader")
+	leaderKey := rs.keyJoiner(rs.rc, "_redis", "_leader")
 	conn := rs.GetConn()
 	defer conn.Close()
 	name, err := redis.String(conn.Do("GET", leaderKey))

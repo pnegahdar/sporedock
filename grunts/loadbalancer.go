@@ -65,3 +65,79 @@ package grunts
 //	}
 //
 //}
+//func CleanupLocations() {
+//	currentCluster := cluster.GetCurrentCluster()
+//	currentManifest := cluster.GetCurrentManifest()
+//	spores := []string{}
+//	for _, spore := range currentManifest {
+//		spores = append(spores, spore.Spore.Name)
+//	}
+//	// Remove APPS DNE
+//	appNames := []string{}
+//	for _, app := range currentCluster.IterApps() {
+//		appNames = append(appNames, app.GetName())
+//	}
+//	store := store.GetStore()
+//	resp, err := store.GetKey(AppLocationsKey)
+//	utils.HandleError(err)
+//	if resp == "" {
+//		return
+//	}
+//	utils.HandleError(err)
+//	for _, node := range resp.Noe.Nodes {
+//		appName := pathLastPart(node.Key)
+//		if !In(appNames, appName) {
+//			utils.LogDebug(fmt.Sprintf("App %v no longer exists removing loc.", appName))
+//			_, err := server.EtcdClient().Delete(node.Key, true)
+//			utils.HandleError(err)
+//		}
+//	}
+//	// Remove Machines DNE
+//	for _, app := range currentCluster.IterApps() {
+//		keyName := cluster.GetAppLocationKey(app.GetName())
+//		resp, err := server.EtcdClient().Get(keyName, true, false)
+//		if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+//			continue
+//		}
+//		utils.HandleError(err)
+//		for _, node := range resp.Node.Nodes {
+//			machineName := pathLastPart(node.Key)
+//			if !In(spores, machineName) {
+//				utils.LogDebug(fmt.Sprintf("Machine %v no longer exists removing loc.", machineName))
+//				_, err := server.EtcdClient().Delete(node.Key, true)
+//				utils.HandleError(err)
+//			}
+//		}
+//	}
+//
+//}
+//
+//func UpdateLocations(appNames []string) {
+//	dc := CachedDockerClient()
+//	store := store.GetStore()
+//	mySpore := store.GetMe()
+//	locations := cluster.GetCurrentLBSet()
+//	for _, appName := range appNames {
+//		resp, err := dc.InspectContainer(appName)
+//		utils.HandleError(err)
+//		// Remove dead app
+//		if !resp.State.Running {
+//			_, err := server.EtcdClient().Delete(keyName, true)
+//			if err != nil && strings.Index(err.Error(), "Key not found") != -1 {
+//				continue
+//			}
+//			utils.LogDebug(fmt.Sprintf("Removed dead app location %v", appName))
+//			utils.HandleError(err)
+//			continue
+//		}
+//		bindings := resp.NetworkSettings.Ports
+//		for k, v := range bindings {
+//			if k == "80/tcp" {
+//				//Todo(parham): Only allows for one per node
+//				location := mySpore.GetPortLocation(v[0].HostPort)
+//				_, err := server.EtcdClient().Set(keyName, location, 0)
+//				utils.HandleError(err)
+//			}
+//		}
+//	}
+//}

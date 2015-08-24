@@ -2,6 +2,7 @@ package grunts
 
 import (
 	"fmt"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/mux"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
@@ -119,7 +120,9 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	webServerRouter := mux.NewRouter().StrictSlash(true)
 
 	// Create Run Context
-	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter}
+	dockerClient, err := docker.NewClientFromEnv()
+	utils.HandleError(err)
+	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter, DockerClient: dockerClient}
 	// Register and run
 	gruntRegistry := NewGruntRegistry(&runContext)
 
@@ -128,8 +131,9 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	api := &SporeAPI{}
 	webserver := &WebServer{}
 	planner := &Planner{}
+	dockerRunner := &DockerRunner{}
 	runContext.Store = store
 
-	gruntRegistry.Start(store, api, webserver, planner)
+	gruntRegistry.Start(store, api, webserver, planner, dockerRunner)
 	return gruntRegistry
 }

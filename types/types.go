@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/mux"
 	"net"
 	"reflect"
@@ -81,6 +82,16 @@ type RunContext struct {
 	MyGroup         string
 	WebServerBind   string
 	WebServerRouter *mux.Router
+	DockerClient    *docker.Client
+}
+
+func (rc RunContext) NamespacePrefixParts() []string {
+	return []string{"sporedock", rc.MyGroup, rc.MyMachineID}
+}
+
+func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
+	data := append(rc.NamespacePrefixParts(), extra...)
+	return strings.Join(data, joiner)
 }
 
 type TypeMeta struct {
