@@ -64,15 +64,8 @@ func PullApp(runContext *types.RunContext, app DockerApp) {
 		err = runContext.DockerClient.PullImage(imageOptions, authConfig)
 		utils.HandleError(err)
 		utils.LogInfoF("Finished pulling docker image %v", parsedImage.Full)
-	} else {
-		utils.LogInfoF("Already have image %v", parsedImage.Full)
 	}
 	utils.HandleError(err)
-}
-
-func pathLastPart(path string) string {
-	allPaths := strings.Split(path, "/")
-	return allPaths[len(allPaths)-1]
 }
 
 func createContainer(runContext *types.RunContext, guid RunGuid, app DockerApp) string {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"net/rpc"
 )
 
 type WebServer struct {
@@ -34,6 +35,7 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 		Timeout: 1 * time.Second,
 		Server:  &http.Server{Addr: runContext.WebServerBind, Handler: runContext.WebServerRouter},
 	}
+	runContext.RPCServer.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	go func(j *graceful.Server) {
 		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.WebServerBind))
 		err := srv.ListenAndServe()

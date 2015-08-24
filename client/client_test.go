@@ -91,7 +91,7 @@ func (suite *ApiTestSuite) TestDelete() {
 }
 
 func TestApiTestSuite(t *testing.T) {
-	registry := grunts.CreateAndRun("redis://localhost:6379", "testGroup1", "myMachine", "127.0.0.1", ":5001")
+	registry := grunts.CreateAndRun("redis://localhost:6379", "testGroup1", "myMachine", "127.0.0.1", ":5002")
 	suite.Run(t, &ApiTestSuite{runContext: registry.Context})
 	registry.Stop()
 }

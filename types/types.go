@@ -8,6 +8,8 @@ import (
 	"net"
 	"reflect"
 	"strings"
+	"net/rpc"
+	"sync"
 )
 
 type SporeType string
@@ -81,8 +83,11 @@ type RunContext struct {
 	MyType          SporeType
 	MyGroup         string
 	WebServerBind   string
+	RPCServerBind   string
 	WebServerRouter *mux.Router
 	DockerClient    *docker.Client
+	rpcOnce         sync.Once
+	RPCServer       *rpc.Server
 }
 
 func (rc RunContext) NamespacePrefixParts() []string {
@@ -93,6 +98,18 @@ func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
 	data := append(rc.NamespacePrefixParts(), extra...)
 	return strings.Join(data, joiner)
 }
+
+func (rc *RunContext) initRPC() {
+	rc.rpcOnce.Do(func() {
+		rc.RPCServer = rpc.NewServer()
+	})
+}
+
+func (rc *RunContext) RPCRegister(rcvr interface{}) {
+	rc.initRPC()
+	rc.RPCServer.Register(rcvr)
+}
+
 
 type TypeMeta struct {
 	IsSlice  bool

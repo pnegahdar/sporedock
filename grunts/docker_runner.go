@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var SyncDockerEveryD = time.Millisecond * 1000
+var syncDockerEveryD = time.Millisecond * 1000
 
 type DockerRunner struct {
 	initOnce   sync.Once
@@ -40,7 +40,7 @@ func (d *DockerRunner) Run(runContext *types.RunContext) {
 	d.init(runContext)
 	for {
 		select {
-		case <-time.After(SyncDockerEveryD):
+		case <-time.After(updateEndpointsEvery):
 			d.run()
 		case <-exit:
 			return

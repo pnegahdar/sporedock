@@ -141,3 +141,51 @@ package grunts
 //		}
 //	}
 //}
+
+import (
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
+	"sync"
+	"time"
+	"fmt"
+)
+
+var updateEndpointsEvery = time.Millisecond * 1000
+
+type LoadBalancer struct {
+	initOnce   sync.Once
+	stopCast   utils.SignalCast
+	runContext *types.RunContext
+}
+
+func (lb *LoadBalancer) init(runContext *types.RunContext) {
+	lb.initOnce.Do(func() {
+		lb.runContext = runContext
+	})
+}
+
+func (lb *LoadBalancer) ProcName() string {
+	return "LoadBalancer"
+}
+
+func (lb *LoadBalancer) Stop() {
+	lb.stopCast.Signal()
+}
+
+func (lb *LoadBalancer) Run(runContext *types.RunContext) {
+	exit, _ := lb.stopCast.Listen()
+	lb.init(runContext)
+	for {
+		select {
+		case <-time.After(time.Second * 10):
+			fmt.Println("YO")
+		case <-exit:
+			return
+		}
+	}
+}
+
+func (lb *LoadBalancer) ShouldRun(runContext *types.RunContext) bool {
+	return true
+}
+
