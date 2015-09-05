@@ -21,7 +21,7 @@ type TestTypeB struct {
 
 type GenericStoreTestSuite struct {
 	suite.Suite
-	registry *ModuleRegistry
+	registry *main.ModuleRegistry
 }
 
 func (suite *GenericStoreTestSuite) cleanup() {

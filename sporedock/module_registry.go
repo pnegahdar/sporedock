@@ -1,16 +1,17 @@
-package modules
-
+package sporedock
 import (
-	"fmt"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/gorilla/mux"
 	"github.com/pnegahdar/sporedock/types"
-	"github.com/pnegahdar/sporedock/utils"
-	"net"
-	"runtime/debug"
 	"sync"
+	"github.com/pnegahdar/sporedock/utils"
+	"fmt"
 	"time"
+	"runtime/debug"
+	"github.com/gorilla/mux"
+	"net"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/pnegahdar/sporedock/modules"
 )
+
 
 const RestartDecaySeconds = 1
 
@@ -73,14 +74,13 @@ func (gr *ModuleRegistry) runGrunt(gruntName string) {
 	}
 }
 
-func (gr *ModuleRegistry) Start(modules ...types.Module) {
+func (gr *ModuleRegistry) Start(block bool, modules ...types.Module) {
 	gr.registerModules(modules...)
 	utils.LogInfo("Runner started.")
-	// Range blocks on startMe channel
-	for _, module := range (modules) {
+	for _, module := range modules {
 		module.Init(gr.runContext)
 	}
-	go func() {
+	runner := func() {
 		exit, _ := gr.stopCast.Listen()
 		for {
 			select {
@@ -90,7 +90,12 @@ func (gr *ModuleRegistry) Start(modules ...types.Module) {
 				return
 			}
 		}
-	}()
+	}
+	if block {
+		runner()
+	} else {
+		go runner()
+	}
 }
 
 func (gr *ModuleRegistry) Stop() {
@@ -118,8 +123,6 @@ func NewGruntRegistry(rc *types.RunContext) *ModuleRegistry {
 
 func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string, rpcServerBind string) *ModuleRegistry {
 	myIP := net.ParseIP(machineIP)
-	// myType := "leader"
-
 	webServerRouter := mux.NewRouter().StrictSlash(true)
 
 	// Create Run Context
@@ -129,16 +132,16 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	// Register and run
 	gruntRegistry := NewGruntRegistry(&runContext)
 
-	// Initialize workers
-	//Todo guarantee boot order
-	store := CreateStore(&runContext, connectionString, groupName)
-	api := &SporeAPI{}
-	webserver := &WebServer{}
-	planner := &Planner{}
-	dockerRunner := &DockerRunner{}
-	rpcserver := &RPCServer{}
+
+	store := modules.CreateStore(&runContext, connectionString, groupName)
+	api := &modules.SporeAPI{}
+	webserver := &modules.WebServer{}
+	planner := &modules.Planner{}
+	dockerRunner := &modules.DockerRunner{}
+	loadBalancer := &modules.LoadBalancer{}
+	rpcserver := &modules.RPCServer{}
 	runContext.Store = store
 
-	gruntRegistry.Start(store, api, webserver, planner, dockerRunner, rpcserver)
+	gruntRegistry.Start(false, store, api, webserver, planner, dockerRunner, loadBalancer, rpcserver)
 	return gruntRegistry
 }

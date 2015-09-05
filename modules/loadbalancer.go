@@ -158,7 +158,7 @@ type LoadBalancer struct {
 	runContext *types.RunContext
 }
 
-func (lb *LoadBalancer) init(runContext *types.RunContext) {
+func (lb *LoadBalancer) Init(runContext *types.RunContext) {
 	lb.initOnce.Do(func() {
 		lb.runContext = runContext
 	})
@@ -174,7 +174,6 @@ func (lb *LoadBalancer) Stop() {
 
 func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 	exit, _ := lb.stopCast.Listen()
-	lb.init(runContext)
 	for {
 		select {
 		case <-time.After(time.Second * 10):
@@ -188,3 +187,4 @@ func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 func (lb *LoadBalancer) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
+

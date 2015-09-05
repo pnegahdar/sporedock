@@ -14,10 +14,9 @@ type RPCServer struct {
 	server     *gorpc.Server
 }
 
-
 func (rpc *RPCServer) Init(runContext *types.RunContext) {
 	// Requires one fake func to run/init
-	runContext.RPCAddFunc("_interfal_fake", func(){})
+	runContext.RPCAddFunc("_interfal_fake", func() {})
 	rpc.initOnce.Do(func() {
 		rpc.runContext = runContext
 		rpc.server = gorpc.NewTCPServer(runContext.RPCServerBind, runContext.RPCDispatcher().NewHandlerFunc())

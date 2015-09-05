@@ -7,6 +7,7 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"sort"
 	"sync"
+	"math"
 )
 
 const FitRangeBound = 0.05
@@ -86,7 +87,7 @@ func SavePlan(runContext *types.RunContext, plan *Plan) error {
 type schedulerFunc func(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error)
 
 var Schedulers = []schedulerFunc{PinNodeScheduler, PersistExistingScheduler}
-var FinalScheduler = FirstFirstDecreasingScheduler
+var FinalScheduler = FirstFitsDecreasingScheduler
 
 func HandleSchedulerError(err error, appName string, fnName string) {
 	utils.LogWarnF("Ran into error [%v] when scheduling app %v on %v", err.Error(), appName, fnName)
@@ -108,23 +109,23 @@ func PinNodeScheduler(app *App, runContext *types.RunContext, currentPlan *Plan,
 
 func PersistExistingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
 	if sporeguids, ok := currentPlan.AppSchedule[AppID(app.ID)]; ok {
-		for _, sporeguid := range sporeguids {
-			if spore, ok := newPlan.SporeMap[sporeguid.Sporeid]; ok {
-				newPlan.Add(spore, app, sporeguid.Appguid)
-				app.Count--
+		for i := 0; i< int(math.Min(float64(app.CountRemaining), float64(len(sporeguids) - 1))); i++ {
+			if spore, ok := newPlan.SporeMap[sporeguids[i].Sporeid]; ok {
+				newPlan.Add(spore, app, sporeguids[i].Appguid)
+				app.CountRemaining--
 			}
 		}
 	}
-	if app.Count == 0 {
+	if app.CountRemaining == 0 {
 		return true, nil
 	}
 	return false, nil
 }
 
-func FirstFirstDecreasingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) error {
+func FirstFitsDecreasingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) error {
 	var largestSpore *Spore
 	largestRemSize := 0.0
-	for i := 0; i < app.Count; i++ {
+	for i := 0; i < app.CountRemaining; i++ {
 		for _, spore := range newPlan.SporesDecr {
 			var size float64
 			if _, ok := newPlan.SizeRem[SporeID(spore.ID)]; !ok {

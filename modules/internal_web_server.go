@@ -25,7 +25,7 @@ func (ws *WebServer) ProcName() string {
 	return "WebServer"
 }
 
-func (ws *WebServer) Init(runContext *types.RunContext){
+func (ws *WebServer) Init(runContext *types.RunContext) {
 	return
 }
 

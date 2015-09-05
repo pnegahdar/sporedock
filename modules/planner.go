@@ -46,6 +46,7 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 	}
 	sort.Sort(cluster.Apps(allApps))
 	for _, app := range allApps {
+		app.CountRemaining = app.Count
 		scheduled := false
 		// Todo: exclude repeat
 		for _, fn := range cluster.Schedulers {
@@ -87,7 +88,6 @@ func (pl *Planner) Run(runContext *types.RunContext) {
 		}
 	}
 }
-
 
 func (pl *Planner) Init(runContext *types.RunContext) {
 	return
