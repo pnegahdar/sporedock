@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"fmt"
@@ -42,6 +42,7 @@ func frontendSubDir(addon ...string) string {
 
 type SporeAPI struct {
 	sync.Mutex
+	initOnce   sync.Once
 	runContext *types.RunContext
 	stopCast   utils.SignalCast
 	stopCastMu sync.Mutex
@@ -55,9 +56,26 @@ func (sa SporeAPI) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
 
+func (sa *SporeAPI) Init(runContext *types.RunContext) {
+	sa.initOnce.Do(func() {
+		sa.runContext = runContext
+		sa.setupRoutes()
+	})
+}
+
 func (sa *SporeAPI) Run(runContext *types.RunContext) {
-	sa.Lock()
-	sa.runContext = runContext
+	exit, _ := sa.stopCast.Listen()
+	<-exit
+}
+
+// Todo: make sure stop works without pointer receivers?
+func (sa *SporeAPI) Stop() {
+	sa.stopCastMu.Lock()
+	defer sa.stopCastMu.Unlock()
+	sa.stopCast.Signal()
+}
+
+func (sa *SporeAPI) setupRoutes() {
 	routes := Routes{
 		// API
 		Route{
@@ -103,18 +121,7 @@ func (sa *SporeAPI) Run(runContext *types.RunContext) {
 		func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, frontendSubDir("index.html"))
 		})
-	exit, _ := sa.stopCast.Listen()
-	sa.Unlock()
-	<-exit
 }
-
-// Todo: make sure stop works without pointer receivers?
-func (sa *SporeAPI) Stop() {
-	sa.stopCastMu.Lock()
-	defer sa.stopCastMu.Unlock()
-	sa.stopCast.Signal()
-}
-
 func jsonErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

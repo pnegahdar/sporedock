@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"fmt"
@@ -14,33 +14,33 @@ import (
 
 const RestartDecaySeconds = 1
 
-type GruntRegistry struct {
+type ModuleRegistry struct {
 	sync.Mutex
-	Grunts     map[string]types.Grunt
-	Context    *types.RunContext
+	modules    map[string]types.Module
+	runContext *types.RunContext
 	runCount   map[string]int
 	startMe    chan string
 	stopCast   utils.SignalCast
 	stopCastMu sync.Mutex
 }
 
-func (gr *GruntRegistry) registerGrunts(grunts ...types.Grunt) {
-	gr.startMe = make(chan string, len(grunts))
+func (gr *ModuleRegistry) registerModules(modules ...types.Module) {
+	gr.startMe = make(chan string, len(modules))
 	// Todo: check should run
-	utils.LogInfo(fmt.Sprintf("%v grunts", len(grunts)))
-	for _, grunt := range grunts {
+	utils.LogInfo(fmt.Sprintf("%v modules", len(modules)))
+	for _, grunt := range modules {
 		gruntName := grunt.ProcName()
 		utils.LogInfo(fmt.Sprintf("Adding grunt %v", gruntName))
-		gr.Grunts[gruntName] = grunt
+		gr.modules[gruntName] = grunt
 		gr.runCount[gruntName] = 0
 		gr.startMe <- gruntName
 	}
 
 }
 
-func (gr *GruntRegistry) runGrunt(gruntName string) {
+func (gr *ModuleRegistry) runGrunt(gruntName string) {
 	gr.Lock()
-	grunt, exists := gr.Grunts[gruntName]
+	grunt, exists := gr.modules[gruntName]
 	if !exists {
 		utils.LogWarn(fmt.Sprintf("Grunt %v DNE %v", gruntName, grunt))
 		return
@@ -66,17 +66,20 @@ func (gr *GruntRegistry) runGrunt(gruntName string) {
 				gr.Unlock()
 			}()
 			utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
-			grunt.Run(gr.Context)
+			grunt.Run(gr.runContext)
 		}()
 	case <-exit:
 		return
 	}
 }
 
-func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
-	gr.registerGrunts(grunts...)
+func (gr *ModuleRegistry) Start(modules ...types.Module) {
+	gr.registerModules(modules...)
 	utils.LogInfo("Runner started.")
 	// Range blocks on startMe channel
+	for _, module := range (modules) {
+		module.Init(gr.runContext)
+	}
 	go func() {
 		exit, _ := gr.stopCast.Listen()
 		for {
@@ -90,30 +93,30 @@ func (gr *GruntRegistry) Start(grunts ...types.Grunt) {
 	}()
 }
 
-func (gr *GruntRegistry) Stop() {
+func (gr *ModuleRegistry) Stop() {
 	utils.LogInfo("Stopping grunt controller.")
 	gr.stopCastMu.Lock()
 	defer gr.stopCastMu.Unlock()
 	gr.stopCast.Signal()
 
-	for _, grunt := range gr.Grunts {
+	for _, grunt := range gr.modules {
 		grunt.Stop()
 	}
 
 }
 
-func (gr *GruntRegistry) Wait() {
+func (gr *ModuleRegistry) Wait() {
 	exit, _ := gr.stopCast.Listen()
 	<-exit
 }
 
-func NewGruntRegistry(rc *types.RunContext) *GruntRegistry {
-	grunts := make(map[string]types.Grunt)
+func NewGruntRegistry(rc *types.RunContext) *ModuleRegistry {
+	modules := make(map[string]types.Module)
 	runCount := make(map[string]int)
-	return &GruntRegistry{Context: rc, Grunts: grunts, runCount: runCount}
+	return &ModuleRegistry{runContext: rc, modules: modules, runCount: runCount}
 }
 
-func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string) *GruntRegistry {
+func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string, rpcServerBind string) *ModuleRegistry {
 	myIP := net.ParseIP(machineIP)
 	// myType := "leader"
 
@@ -122,18 +125,20 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	// Create Run Context
 	dockerClient, err := docker.NewClientFromEnv()
 	utils.HandleError(err)
-	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter, DockerClient: dockerClient}
+	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter, DockerClient: dockerClient, RPCServerBind: rpcServerBind}
 	// Register and run
 	gruntRegistry := NewGruntRegistry(&runContext)
 
 	// Initialize workers
+	//Todo guarantee boot order
 	store := CreateStore(&runContext, connectionString, groupName)
 	api := &SporeAPI{}
 	webserver := &WebServer{}
 	planner := &Planner{}
 	dockerRunner := &DockerRunner{}
+	rpcserver := &RPCServer{}
 	runContext.Store = store
 
-	gruntRegistry.Start(store, api, webserver, planner, dockerRunner)
+	gruntRegistry.Start(store, api, webserver, planner, dockerRunner, rpcserver)
 	return gruntRegistry
 }

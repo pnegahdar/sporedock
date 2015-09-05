@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/gorilla/mux"
+	"github.com/valyala/gorpc"
 	"net"
 	"reflect"
 	"strings"
-	"net/rpc"
 	"sync"
 )
 
@@ -29,11 +29,12 @@ var ErrConnectionString = errors.New("Connection string must start with redis://
 var ErrConnectionStringNotSet = errors.New("Connection string not set.")
 
 // HTTP status errors
-type Grunt interface {
+type Module interface {
 	ProcName() string
+	ShouldRun(runContext *RunContext) bool
+	Init(runContext *RunContext)
 	Run(runContext *RunContext)
 	Stop()
-	ShouldRun(runContext *RunContext) bool
 }
 
 const SentinelEnd = -1
@@ -64,7 +65,7 @@ func GetSize(cpu float64, mem float64) float64 {
 }
 
 type SporeStore interface {
-	Grunt
+	Module
 	Get(i interface{}, id string) error
 	GetAll(v interface{}, start int, end int) error
 	Set(v interface{}, id string, logTrim int) error
@@ -85,9 +86,13 @@ type RunContext struct {
 	WebServerBind   string
 	RPCServerBind   string
 	WebServerRouter *mux.Router
+	RPCServer       *gorpc.Server
+	RPCClients      map[string]*gorpc.Client
+	rpcDispatcher   *gorpc.Dispatcher
+	clientLock      sync.Mutex
 	DockerClient    *docker.Client
-	rpcOnce         sync.Once
-	RPCServer       *rpc.Server
+	initOnce        sync.Once
+	rpcAddLock      sync.Mutex
 }
 
 func (rc RunContext) NamespacePrefixParts() []string {
@@ -99,17 +104,47 @@ func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
 	return strings.Join(data, joiner)
 }
 
-func (rc *RunContext) initRPC() {
-	rc.rpcOnce.Do(func() {
-		rc.RPCServer = rpc.NewServer()
+func (rc *RunContext) Init() {
+	rc.initOnce.Do(func() {
+		rc.rpcDispatcher = gorpc.NewDispatcher()
+		rc.RPCClients = map[string]*gorpc.Client{}
 	})
 }
 
-func (rc *RunContext) RPCRegister(rcvr interface{}) {
-	rc.initRPC()
-	rc.RPCServer.Register(rcvr)
+func (rc *RunContext) RPCAddFunc(funcName string, f interface{}) {
+	rc.Init()
+	rc.rpcAddLock.Lock()
+	defer rc.rpcAddLock.Unlock()
+	rc.rpcDispatcher.AddFunc(funcName, f)
 }
 
+func (rc *RunContext) RPCDispatcher() *gorpc.Dispatcher {
+	rc.Init()
+	return rc.rpcDispatcher
+}
+
+func (rc *RunContext) RPCCall(addr string, funcName string, request interface{}) (interface{}, error) {
+	rc.Init()
+	var rpcClient *gorpc.Client
+	rc.clientLock.Lock()
+	if rpcClient, ok := rc.RPCClients[addr]; !ok {
+		rpcClient = gorpc.NewTCPClient(addr)
+		rpcClient.Start()
+		rc.RPCClients[addr] = rpcClient
+	}
+	rc.clientLock.Unlock()
+	funcClient := rc.rpcDispatcher.NewFuncClient(rpcClient)
+	return funcClient.Call(funcName, request)
+}
+
+func (rc *RunContext) RPCCloseAll() {
+	rc.rpcAddLock.Lock()
+	defer rc.rpcAddLock.Unlock()
+	for key, client := range rc.RPCClients {
+		client.Stop()
+		delete(rc.RPCClients, key)
+	}
+}
 
 type TypeMeta struct {
 	IsSlice  bool

@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"github.com/garyburd/redigo/redis"
@@ -124,6 +124,10 @@ func newRedisConnPool(server string) *redis.Pool {
 			return err
 		},
 	}
+}
+
+func (rs *RedisStore) Init(runContext *types.RunContext) {
+	return
 }
 
 func (rs *RedisStore) Run(context *types.RunContext) {

@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"net/rpc"
 )
 
 type WebServer struct {
@@ -18,12 +17,16 @@ type WebServer struct {
 	stopCastMu sync.Mutex
 }
 
-func (ws WebServer) ShouldRun(runContext *types.RunContext) bool {
+func (ws *WebServer) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
 
-func (ws WebServer) ProcName() string {
+func (ws *WebServer) ProcName() string {
 	return "WebServer"
+}
+
+func (ws *WebServer) Init(runContext *types.RunContext){
+	return
 }
 
 func (ws *WebServer) Run(runContext *types.RunContext) {
@@ -35,7 +38,6 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 		Timeout: 1 * time.Second,
 		Server:  &http.Server{Addr: runContext.WebServerBind, Handler: runContext.WebServerRouter},
 	}
-	runContext.RPCServer.HandleHTTP(rpc.DefaultRPCPath, rpc.DefaultDebugPath)
 	go func(j *graceful.Server) {
 		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.WebServerBind))
 		err := srv.ListenAndServe()

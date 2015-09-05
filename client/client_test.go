@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/pnegahdar/sporedock/cluster"
-	"github.com/pnegahdar/sporedock/grunts"
+	"github.com/pnegahdar/sporedock/modules"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/stretchr/testify/suite"
 	"sort"
@@ -91,7 +91,7 @@ func (suite *ApiTestSuite) TestDelete() {
 }
 
 func TestApiTestSuite(t *testing.T) {
-	registry := grunts.CreateAndRun("redis://localhost:6379", "testGroup1", "myMachine", "127.0.0.1", ":5002")
-	suite.Run(t, &ApiTestSuite{runContext: registry.Context})
+	registry := modules.CreateAndRun("redis://localhost:6379", "testGroup1", "myMachine", "127.0.0.1", ":5002")
+	suite.Run(t, &ApiTestSuite{runContext: registry.runContext})
 	registry.Stop()
 }

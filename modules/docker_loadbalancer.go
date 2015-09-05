@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 //
 //import (
@@ -143,11 +143,11 @@ package grunts
 //}
 
 import (
+	"fmt"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
 	"time"
-	"fmt"
 )
 
 var updateEndpointsEvery = time.Millisecond * 1000
@@ -188,4 +188,3 @@ func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 func (lb *LoadBalancer) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
-

@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"fmt"
@@ -86,6 +86,11 @@ func (pl *Planner) Run(runContext *types.RunContext) {
 			return
 		}
 	}
+}
+
+
+func (pl *Planner) Init(runContext *types.RunContext) {
+	return
 }
 
 func (pl *Planner) Stop() {

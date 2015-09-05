@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"github.com/pnegahdar/sporedock/types"
@@ -21,7 +21,7 @@ type TestTypeB struct {
 
 type GenericStoreTestSuite struct {
 	suite.Suite
-	registry *GruntRegistry
+	registry *ModuleRegistry
 }
 
 func (suite *GenericStoreTestSuite) cleanup() {
@@ -42,7 +42,7 @@ func (suite *GenericStoreTestSuite) TearDownSuite() {
 }
 
 func (suite *GenericStoreTestSuite) getStore() types.SporeStore {
-	return suite.registry.Context.Store
+	return suite.registry.runContext.Store
 }
 
 func (suite *GenericStoreTestSuite) TestGet() {

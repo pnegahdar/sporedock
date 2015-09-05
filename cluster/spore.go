@@ -20,7 +20,7 @@ type Spore struct {
 func (spore *Spore) RPCCall(serviceMethod string, args interface{}, reply interface{}) error {
 	// Todo bypass if local
 	// Todo unfix ip
-	client, err := rpc.DialHTTP("tcp", spore.MemberIP + ":5001")
+	client, err := rpc.DialHTTP("tcp", spore.MemberIP+":5001")
 	if err != nil {
 		return err
 	}
@@ -34,8 +34,8 @@ func (s Spore) Size() float64 {
 
 type Spores []Spore
 
-func (s Spores) Len() int { return len(s) }
-func (s Spores) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s Spores) Len() int           { return len(s) }
+func (s Spores) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s Spores) Less(i, j int) bool { return s[i].Size() < s[j].Size() }
 
 func (s *Spore) Validate() error {
@@ -76,7 +76,6 @@ func GetSpore(rc *types.RunContext, id string) (*Spore, error) {
 	}
 	return spore, nil
 }
-
 
 func AmLeader(rc *types.RunContext) (bool, error) {
 	leaderName, err := rc.Store.LeaderName()

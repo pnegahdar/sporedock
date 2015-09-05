@@ -1,4 +1,4 @@
-package grunts
+package modules
 
 import (
 	"github.com/fsouza/go-dockerclient"
@@ -18,7 +18,7 @@ type DockerRunner struct {
 	runContext *types.RunContext
 }
 
-func (d *DockerRunner) init(runContext *types.RunContext) {
+func (d *DockerRunner) Init(runContext *types.RunContext) {
 	d.initOnce.Do(func() {
 		client, err := docker.NewClientFromEnv()
 		d.client = client
@@ -37,7 +37,6 @@ func (d *DockerRunner) Stop() {
 
 func (d *DockerRunner) Run(runContext *types.RunContext) {
 	exit, _ := d.stopCast.Listen()
-	d.init(runContext)
 	for {
 		select {
 		case <-time.After(updateEndpointsEvery):
