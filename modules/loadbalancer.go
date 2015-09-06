@@ -187,4 +187,3 @@ func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 func (lb *LoadBalancer) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
-

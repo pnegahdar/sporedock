@@ -1,17 +1,17 @@
 package sporedock
-import (
-	"github.com/pnegahdar/sporedock/types"
-	"sync"
-	"github.com/pnegahdar/sporedock/utils"
-	"fmt"
-	"time"
-	"runtime/debug"
-	"github.com/gorilla/mux"
-	"net"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/pnegahdar/sporedock/modules"
-)
 
+import (
+	"fmt"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/gorilla/mux"
+	"github.com/pnegahdar/sporedock/modules"
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
+	"net"
+	"runtime/debug"
+	"sync"
+	"time"
+)
 
 const RestartDecaySeconds = 1
 
@@ -25,67 +25,67 @@ type ModuleRegistry struct {
 	stopCastMu sync.Mutex
 }
 
-func (gr *ModuleRegistry) registerModules(modules ...types.Module) {
-	gr.startMe = make(chan string, len(modules))
+func (mr *ModuleRegistry) registerModules(modules ...types.Module) {
+	mr.startMe = make(chan string, len(modules))
 	// Todo: check should run
 	utils.LogInfo(fmt.Sprintf("%v modules", len(modules)))
-	for _, grunt := range modules {
-		gruntName := grunt.ProcName()
-		utils.LogInfo(fmt.Sprintf("Adding grunt %v", gruntName))
-		gr.modules[gruntName] = grunt
-		gr.runCount[gruntName] = 0
-		gr.startMe <- gruntName
+	for _, module := range modules {
+		moduleName := module.ProcName()
+		utils.LogInfo(fmt.Sprintf("Adding module %v", moduleName))
+		mr.modules[moduleName] = module
+		mr.runCount[moduleName] = 0
+		mr.startMe <- moduleName
 	}
 
 }
 
-func (gr *ModuleRegistry) runGrunt(gruntName string) {
-	gr.Lock()
-	grunt, exists := gr.modules[gruntName]
+func (mr *ModuleRegistry) runModule(moduleName string) {
+	mr.Lock()
+	module, exists := mr.modules[moduleName]
 	if !exists {
-		utils.LogWarn(fmt.Sprintf("Grunt %v DNE %v", gruntName, grunt))
+		utils.LogWarn(fmt.Sprintf("Module %v DNE %v", moduleName, module))
 		return
 	}
-	runCount := gr.runCount[gruntName]
+	runCount := mr.runCount[moduleName]
 	delayTot := RestartDecaySeconds * runCount
-	gr.runCount[gruntName] = runCount + 1
-	utils.LogInfo(fmt.Sprintf("Running grunt %v with delay of %v seconds", gruntName, delayTot))
-	exit, _ := gr.stopCast.Listen()
-	gr.Unlock()
+	mr.runCount[moduleName] = runCount + 1
+	utils.LogInfo(fmt.Sprintf("Running module %v with delay of %v seconds", moduleName, delayTot))
+	exit, _ := mr.stopCast.Listen()
+	mr.Unlock()
 	select {
 	case <-time.After(time.Duration(delayTot) * time.Second):
 		go func() {
 			defer func() {
 				if rec := recover(); rec != nil {
-					utils.LogWarn(fmt.Sprintf("Grunt %v paniced", gruntName))
+					utils.LogWarn(fmt.Sprintf("Module %v paniced", moduleName))
 					debug.PrintStack()
 				} else {
-					utils.LogWarn(fmt.Sprintf("Grunt %v exited", gruntName))
+					utils.LogWarn(fmt.Sprintf("Module %v exited", moduleName))
 				}
-				gr.Lock()
-				gr.startMe <- gruntName
-				gr.Unlock()
+				mr.Lock()
+				mr.startMe <- moduleName
+				mr.Unlock()
 			}()
-			utils.LogInfo(fmt.Sprintf("Started grunt %v", gruntName))
-			grunt.Run(gr.runContext)
+			utils.LogInfo(fmt.Sprintf("Started module %v", moduleName))
+			module.Run(mr.runContext)
 		}()
 	case <-exit:
 		return
 	}
 }
 
-func (gr *ModuleRegistry) Start(block bool, modules ...types.Module) {
-	gr.registerModules(modules...)
+func (mr *ModuleRegistry) Start(block bool, modules ...types.Module) {
+	mr.registerModules(modules...)
 	utils.LogInfo("Runner started.")
 	for _, module := range modules {
-		module.Init(gr.runContext)
+		module.Init(mr.runContext)
 	}
 	runner := func() {
-		exit, _ := gr.stopCast.Listen()
+		exit, _ := mr.stopCast.Listen()
 		for {
 			select {
-			case gruntToStart := <-gr.startMe:
-				gr.runGrunt(gruntToStart)
+			case moduleToStart := <-mr.startMe:
+				mr.runModule(moduleToStart)
 			case <-exit:
 				return
 			}
@@ -98,24 +98,24 @@ func (gr *ModuleRegistry) Start(block bool, modules ...types.Module) {
 	}
 }
 
-func (gr *ModuleRegistry) Stop() {
-	utils.LogInfo("Stopping grunt controller.")
-	gr.stopCastMu.Lock()
-	defer gr.stopCastMu.Unlock()
-	gr.stopCast.Signal()
+func (mr *ModuleRegistry) Stop() {
+	utils.LogInfo("Stopping module controller.")
+	mr.stopCastMu.Lock()
+	defer mr.stopCastMu.Unlock()
+	mr.stopCast.Signal()
 
-	for _, grunt := range gr.modules {
-		grunt.Stop()
+	for _, module := range mr.modules {
+		module.Stop()
 	}
 
 }
 
-func (gr *ModuleRegistry) Wait() {
-	exit, _ := gr.stopCast.Listen()
+func (mr *ModuleRegistry) Wait() {
+	exit, _ := mr.stopCast.Listen()
 	<-exit
 }
 
-func NewGruntRegistry(rc *types.RunContext) *ModuleRegistry {
+func NewModuleRegistry(rc *types.RunContext) *ModuleRegistry {
 	modules := make(map[string]types.Module)
 	runCount := make(map[string]int)
 	return &ModuleRegistry{runContext: rc, modules: modules, runCount: runCount}
@@ -130,8 +130,7 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	utils.HandleError(err)
 	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter, DockerClient: dockerClient, RPCServerBind: rpcServerBind}
 	// Register and run
-	gruntRegistry := NewGruntRegistry(&runContext)
-
+	moduleRegistry := NewModuleRegistry(&runContext)
 
 	store := modules.CreateStore(&runContext, connectionString, groupName)
 	api := &modules.SporeAPI{}
@@ -142,6 +141,6 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	rpcserver := &modules.RPCServer{}
 	runContext.Store = store
 
-	gruntRegistry.Start(false, store, api, webserver, planner, dockerRunner, loadBalancer, rpcserver)
-	return gruntRegistry
+	moduleRegistry.Start(false, store, api, webserver, planner, dockerRunner, loadBalancer, rpcserver)
+	return moduleRegistry
 }

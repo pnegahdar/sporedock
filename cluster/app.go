@@ -27,7 +27,7 @@ func (a App) Size() float64 {
 
 type Apps []App
 
-func (a Apps) Len() int { return len(a) }
+func (a Apps) Len() int      { return len(a) }
 func (a Apps) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a Apps) Less(i, j int) bool {
 	return types.GetSize(a[i].Cpus, a[i].Mem) < types.GetSize(a[j].Cpus, a[j].Mem)
@@ -49,8 +49,8 @@ func (wa App) DockerContainerOptions(runContext *types.RunContext, guid RunGuid)
 		RestartPolicy: restartPolicy,
 	}
 	envsForDocker := EnvAsDockerKV(wa.Env())
-	exposedPorts := map[docker.Port]struct {}{
-		elbPort: struct {}{}}
+	exposedPorts := map[docker.Port]struct{}{
+		elbPort: struct{}{}}
 	containerConfig := &docker.Config{
 		Env:          envsForDocker,
 		Image:        wa.Image,

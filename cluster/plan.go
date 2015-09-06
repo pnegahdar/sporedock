@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
+	"math"
 	"sort"
 	"sync"
-	"math"
 )
 
 const FitRangeBound = 0.05
@@ -109,7 +109,8 @@ func PinNodeScheduler(app *App, runContext *types.RunContext, currentPlan *Plan,
 
 func PersistExistingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
 	if sporeguids, ok := currentPlan.AppSchedule[AppID(app.ID)]; ok {
-		for i := 0; i< int(math.Min(float64(app.CountRemaining), float64(len(sporeguids) - 1))); i++ {
+		packCount := int(math.Min(float64(app.CountRemaining), float64(len(sporeguids))))
+		for i := 0; i < packCount; i++ {
 			if spore, ok := newPlan.SporeMap[sporeguids[i].Sporeid]; ok {
 				newPlan.Add(spore, app, sporeguids[i].Appguid)
 				app.CountRemaining--

@@ -179,4 +179,3 @@ func NewMeta(v interface{}) (TypeMeta, error) {
 	}
 	return TypeMeta{IsSlice: isSlice, TypeName: strings.TrimPrefix(typeName, "*")}, nil
 }
-

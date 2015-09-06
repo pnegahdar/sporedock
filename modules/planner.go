@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const PlanEveryMs = 10000
+const PlanEveryMs = 5000
 
 type Planner struct {
 	sync.Mutex
@@ -49,10 +49,10 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 		app.CountRemaining = app.Count
 		scheduled := false
 		// Todo: exclude repeat
-		for _, fn := range cluster.Schedulers {
-			scheduled, err = fn(&app, runContext, currentPlan, newPlan)
+		for _, scheduler_fun := range cluster.Schedulers {
+			scheduled, err = scheduler_fun(&app, runContext, currentPlan, newPlan)
 			if err != nil {
-				cluster.HandleSchedulerError(err, app.ID, fmt.Sprintf("%v", fn))
+				cluster.HandleSchedulerError(err, app.ID, fmt.Sprintf("%v", scheduler_fun))
 			}
 			if scheduled {
 				break

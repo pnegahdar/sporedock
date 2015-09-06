@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/pnegahdar/sporedock/utils"
-	"runtime"
 	"github.com/op/go-logging"
+	"github.com/pnegahdar/sporedock/sporedock"
+	"github.com/pnegahdar/sporedock/utils"
 	"os"
 	"os/signal"
-	"github.com/pnegahdar/sporedock/sporedock"
+	"runtime"
 )
-
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())

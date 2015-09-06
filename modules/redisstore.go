@@ -36,7 +36,6 @@ func wrapError(err error) error {
 
 type RedisStore struct {
 	mu               sync.Mutex
-	ConnMu           sync.Mutex
 	initOnce         sync.Once
 	connectionString string
 	connPool         *redis.Pool
