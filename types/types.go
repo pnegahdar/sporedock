@@ -77,22 +77,73 @@ type SporeStore interface {
 	LeaderName() (string, error)
 }
 
-type RunContext struct {
-	Store           SporeStore
-	MyMachineID     string
-	MyIP            net.IP
-	MyType          SporeType
-	MyGroup         string
+type RPCManager struct {
+	RPCServerBind string
+	RPCServer     *gorpc.Server
+	RPCClients    map[string]*gorpc.Client
+	rpcDispatcher *gorpc.Dispatcher
+	clientLock    sync.Mutex
+	initOnce      sync.Once
+	sync.Mutex
+}
+
+func (rpcm *RPCManager) Init() *RPCManager {
+	rpcm.initOnce.Do(func() {
+		rpcm.rpcDispatcher = gorpc.NewDispatcher()
+		rpcm.RPCClients = map[string]*gorpc.Client{}
+	})
+	return rpcm
+}
+
+func (rpcm *RPCManager) RPCAddFunc(funcName string, f interface{}) {
+	rpcm.Lock()
+	defer rpcm.Unlock()
+	rpcm.rpcDispatcher.AddFunc(funcName, f)
+}
+
+func (rpcm *RPCManager) RPCDispatcher() *gorpc.Dispatcher {
+	return rpcm.rpcDispatcher
+}
+
+func (rpcm *RPCManager) RPCCall(addr string, funcName string, request interface{}) (interface{}, error) {
+	var rpcClient *gorpc.Client
+	rpcm.clientLock.Lock()
+	if rpcClient, ok := rpcm.RPCClients[addr]; !ok {
+		rpcClient = gorpc.NewTCPClient(addr)
+		rpcClient.Start()
+		rpcm.RPCClients[addr] = rpcClient
+	}
+	rpcm.clientLock.Unlock()
+	funcClient := rpcm.rpcDispatcher.NewFuncClient(rpcClient)
+	return funcClient.Call(funcName, request)
+}
+
+func (rpcm *RPCManager) RPCCloseAll() {
+	rpcm.Lock()
+	defer rpcm.Unlock()
+	for key, client := range rpcm.RPCClients {
+		client.Stop()
+		delete(rpcm.RPCClients, key)
+	}
+}
+
+type WebServerManager struct {
 	WebServerBind   string
-	RPCServerBind   string
 	WebServerRouter *mux.Router
-	RPCServer       *gorpc.Server
-	RPCClients      map[string]*gorpc.Client
-	rpcDispatcher   *gorpc.Dispatcher
-	clientLock      sync.Mutex
-	DockerClient    *docker.Client
-	initOnce        sync.Once
-	rpcAddLock      sync.Mutex
+	sync.Mutex
+}
+
+type RunContext struct {
+	Store            SporeStore
+	MyMachineID      string
+	MyIP             net.IP
+	MyType           SporeType
+	MyGroup          string
+	RPCManager       *RPCManager
+	WebServerManager *WebServerManager
+	DockerClient     *docker.Client
+	initOnce         sync.Once
+	sync.Mutex
 }
 
 func (rc RunContext) NamespacePrefixParts() []string {
@@ -102,48 +153,6 @@ func (rc RunContext) NamespacePrefixParts() []string {
 func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
 	data := append(rc.NamespacePrefixParts(), extra...)
 	return strings.Join(data, joiner)
-}
-
-func (rc *RunContext) Init() {
-	rc.initOnce.Do(func() {
-		rc.rpcDispatcher = gorpc.NewDispatcher()
-		rc.RPCClients = map[string]*gorpc.Client{}
-	})
-}
-
-func (rc *RunContext) RPCAddFunc(funcName string, f interface{}) {
-	rc.Init()
-	rc.rpcAddLock.Lock()
-	defer rc.rpcAddLock.Unlock()
-	rc.rpcDispatcher.AddFunc(funcName, f)
-}
-
-func (rc *RunContext) RPCDispatcher() *gorpc.Dispatcher {
-	rc.Init()
-	return rc.rpcDispatcher
-}
-
-func (rc *RunContext) RPCCall(addr string, funcName string, request interface{}) (interface{}, error) {
-	rc.Init()
-	var rpcClient *gorpc.Client
-	rc.clientLock.Lock()
-	if rpcClient, ok := rc.RPCClients[addr]; !ok {
-		rpcClient = gorpc.NewTCPClient(addr)
-		rpcClient.Start()
-		rc.RPCClients[addr] = rpcClient
-	}
-	rc.clientLock.Unlock()
-	funcClient := rc.rpcDispatcher.NewFuncClient(rpcClient)
-	return funcClient.Call(funcName, request)
-}
-
-func (rc *RunContext) RPCCloseAll() {
-	rc.rpcAddLock.Lock()
-	defer rc.rpcAddLock.Unlock()
-	for key, client := range rc.RPCClients {
-		client.Stop()
-		delete(rc.RPCClients, key)
-	}
 }
 
 type TypeMeta struct {

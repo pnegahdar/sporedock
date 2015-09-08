@@ -9,6 +9,8 @@ import (
 
 var IPParseError = errors.New("The IP of the machine is not parsable as a standard IP.")
 
+type SporeID string
+
 type Spore struct {
 	ID         string
 	MemberIP   string

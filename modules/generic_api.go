@@ -111,13 +111,13 @@ func (sa *SporeAPI) setupRoutes() {
 	}
 	// Register API routes
 	for _, route := range routes {
-		sa.runContext.WebServerRouter.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
+		sa.runContext.WebServerManager.WebServerRouter.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(route.HandlerFunc)
 	}
 	// Dash Routes
 	staticRoute := types.GetDashboardRoute("static")
 	staticHandler := http.StripPrefix(staticRoute, http.FileServer(http.Dir(frontendSubDir("static"))))
-	sa.runContext.WebServerRouter.Methods("GET").PathPrefix(staticRoute).Name("DashboardStaticFiles").Handler(staticHandler)
-	sa.runContext.WebServerRouter.Methods("GET").PathPrefix(types.GetDashboardRoute()).Name("DashboardIndex").HandlerFunc(
+	sa.runContext.WebServerManager.WebServerRouter.Methods("GET").PathPrefix(staticRoute).Name("DashboardStaticFiles").Handler(staticHandler)
+	sa.runContext.WebServerManager.WebServerRouter.Methods("GET").PathPrefix(types.GetDashboardRoute()).Name("DashboardIndex").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, frontendSubDir("index.html"))
 		})

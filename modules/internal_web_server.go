@@ -36,10 +36,10 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 	exit, _ := ws.stopCast.Listen()
 	srv := &graceful.Server{
 		Timeout: 1 * time.Second,
-		Server:  &http.Server{Addr: runContext.WebServerBind, Handler: runContext.WebServerRouter},
+		Server:  &http.Server{Addr: runContext.WebServerManager.WebServerBind, Handler: runContext.WebServerManager.WebServerRouter},
 	}
 	go func(j *graceful.Server) {
-		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.WebServerBind))
+		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.WebServerManager.WebServerBind))
 		err := srv.ListenAndServe()
 		if !strings.Contains(err.Error(), "use of closed network connection") {
 			utils.HandleError(err)
@@ -47,7 +47,7 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 	}(srv)
 	<-exit
 	srv.Stop(srv.Timeout)
-	utils.LogInfo(fmt.Sprintf("Webserver stopped on %v", runContext.WebServerBind))
+	utils.LogInfo(fmt.Sprintf("Webserver stopped on %v", runContext.WebServerManager.WebServerBind))
 }
 
 func (ws *WebServer) Stop() {

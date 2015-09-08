@@ -116,9 +116,7 @@ func (mr *ModuleRegistry) Wait() {
 }
 
 func NewModuleRegistry(rc *types.RunContext) *ModuleRegistry {
-	modules := make(map[string]types.Module)
-	runCount := make(map[string]int)
-	return &ModuleRegistry{runContext: rc, modules: modules, runCount: runCount}
+	return &ModuleRegistry{runContext: rc, modules: map[string]types.Module{}, runCount: map[string]int{}}
 }
 
 func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string, rpcServerBind string) *ModuleRegistry {
@@ -128,7 +126,12 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	// Create Run Context
 	dockerClient, err := docker.NewClientFromEnv()
 	utils.HandleError(err)
-	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerBind: webServerBind, WebServerRouter: webServerRouter, DockerClient: dockerClient, RPCServerBind: rpcServerBind}
+
+	// Setup Managers
+	rpcManager := (&types.RPCManager{RPCServerBind: rpcServerBind}).Init()
+	webserverManager := &types.WebServerManager{WebServerBind: webServerBind, WebServerRouter: webServerRouter}
+
+	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerManager: webserverManager, DockerClient: dockerClient, RPCManager: rpcManager}
 	// Register and run
 	moduleRegistry := NewModuleRegistry(&runContext)
 

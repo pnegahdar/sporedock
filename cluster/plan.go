@@ -15,8 +15,6 @@ const PackIfNoFit = true
 
 const currentPlanName = "current"
 
-type AppID string
-type SporeID string
 type RunGuid string
 
 type SporeGuid struct {
@@ -89,7 +87,7 @@ type schedulerFunc func(app *App, runContext *types.RunContext, currentPlan *Pla
 var Schedulers = []schedulerFunc{PinNodeScheduler, PersistExistingScheduler}
 var FinalScheduler = FirstFitsDecreasingScheduler
 
-func HandleSchedulerError(err error, appName string, fnName string) {
+func HandleSchedulerError(err error, appName AppID, fnName string) {
 	utils.LogWarnF("Ran into error [%v] when scheduling app %v on %v", err.Error(), appName, fnName)
 }
 

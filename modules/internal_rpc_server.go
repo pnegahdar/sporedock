@@ -16,10 +16,10 @@ type RPCServer struct {
 
 func (rpc *RPCServer) Init(runContext *types.RunContext) {
 	// Requires one fake func to run/init
-	runContext.RPCAddFunc("_interfal_fake", func() {})
+	runContext.RPCManager.RPCAddFunc("_interfal_fake", func() {})
 	rpc.initOnce.Do(func() {
 		rpc.runContext = runContext
-		rpc.server = gorpc.NewTCPServer(runContext.RPCServerBind, runContext.RPCDispatcher().NewHandlerFunc())
+		rpc.server = gorpc.NewTCPServer(runContext.RPCManager.RPCServerBind, runContext.RPCManager.RPCDispatcher().NewHandlerFunc())
 	})
 }
 
@@ -32,7 +32,7 @@ func (rpc *RPCServer) ProcName() string {
 }
 
 func (rpc *RPCServer) Stop() {
-	rpc.runContext.RPCCloseAll()
+	rpc.runContext.RPCManager.RPCCloseAll()
 	rpc.server.Stop()
 	rpc.stopCast.Signal()
 }

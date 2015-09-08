@@ -7,6 +7,7 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 )
 
+type AppID string
 type App struct {
 	Count                   int
 	CountRemaining          int `json:"-"`
@@ -15,7 +16,7 @@ type App struct {
 	AttachedEnvs            []string
 	ExtraEnv                map[string]string
 	Tags                    map[string]string
-	ID                      string
+	ID                      AppID
 	Image                   string
 	BalancedInternalTCPPort int
 	types.Sizable
@@ -72,7 +73,7 @@ func (wa *App) Validate(rc *types.RunContext) error {
 }
 
 func (wa *App) GetID() string {
-	return wa.ID
+	return string(wa.ID)
 }
 
 func AllApps(runContext *types.RunContext) ([]App, error) {
