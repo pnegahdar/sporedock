@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"github.com/pnegahdar/sporedock/utils"
+	"github.com/pnegahdar/sporedock/modules"
 )
 
 type SporeType string
@@ -148,6 +149,7 @@ type RunContext struct {
 	MyIP             net.IP
 	MyType           SporeType
 	MyGroup          string
+	EvetnManager     *modules.EventManager
 	RPCManager       *RPCManager
 	WebServerManager *WebServerManager
 	DockerClient     *docker.Client
