@@ -1,4 +1,4 @@
-package cluster
+package types
 
 type MachineManifest struct {
 	Spore      string

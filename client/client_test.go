@@ -25,7 +25,7 @@ type ApiTestSuite struct {
 }
 
 func (suite *ApiTestSuite) cleanup() {
-	err := suite.runContext.Store.DeleteAll(cluster.App{})
+	err := suite.runContext.Store.DeleteAll(types.App{})
 	suite.Nil(err)
 }
 
@@ -50,7 +50,7 @@ func (suite *ApiTestSuite) TestAllApps() {
 	idsCreated := []string{}
 	for i := 0; i < create; i++ {
 		name := "TESTWEBAPP" + strconv.Itoa(i)
-		suite.Client.CreateApp(&cluster.App{ID: name})
+		suite.Client.CreateApp(&types.App{ID: name})
 		idsCreated = append(idsCreated, name)
 	}
 	webapps, err = suite.Client.GetApps()
@@ -66,10 +66,10 @@ func (suite *ApiTestSuite) TestAllApps() {
 }
 
 func (suite *ApiTestSuite) TestCreateApp() {
-	toCreate := &cluster.App{ID: "TESTWEBAPP"}
+	toCreate := &types.App{ID: "TESTWEBAPP"}
 	err := suite.Client.CreateApp(toCreate)
 	suite.Nil(err)
-	overwrite := &cluster.App{ID: "TESTWEBAPP"}
+	overwrite := &types.App{ID: "TESTWEBAPP"}
 	err = suite.Client.CreateApp(overwrite)
 	suite.NotNil(err)
 
@@ -79,7 +79,7 @@ func (suite *ApiTestSuite) TestCreateApp() {
 }
 
 func (suite *ApiTestSuite) TestDelete() {
-	toCreate := &cluster.App{ID: "TESTWEBAPP"}
+	toCreate := &types.App{ID: "TESTWEBAPP"}
 	err := suite.Client.CreateApp(toCreate)
 	suite.Nil(err)
 	_, err = suite.Client.GetApp("TESTWEBAPP")

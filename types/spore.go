@@ -1,8 +1,7 @@
-package cluster
+package types
 
 import (
 	"errors"
-	"github.com/pnegahdar/sporedock/types"
 	"net"
 	"net/rpc"
 )
@@ -10,13 +9,20 @@ import (
 var IPParseError = errors.New("The IP of the machine is not parsable as a standard IP.")
 
 type SporeID string
+type SporeType string
+
+const (
+	TypeSporeLeader  SporeType = "leader"
+	TypeSporeMember  SporeType = "member"
+	TypeSporeWatcher SporeType = "watcher"
+)
 
 type Spore struct {
 	ID         string
 	MemberIP   string
-	MemberType types.SporeType
+	MemberType SporeType
 	Tags       map[string]string
-	types.Sizable
+	Sizable
 }
 
 func (spore *Spore) RPCCall(serviceMethod string, args interface{}, reply interface{}) error {
@@ -31,7 +37,7 @@ func (spore *Spore) RPCCall(serviceMethod string, args interface{}, reply interf
 	return err
 }
 func (s Spore) Size() float64 {
-	return types.GetSize(s.Cpus, s.Mem)
+	return GetSize(s.Cpus, s.Mem)
 }
 
 type Spores []Spore
@@ -48,16 +54,16 @@ func (s *Spore) Validate() error {
 	return nil
 }
 
-func AllSpores(rc *types.RunContext) (Spores, error) {
+func AllSpores(rc *RunContext) (Spores, error) {
 	sporeType := []Spore{}
-	err := rc.Store.GetAll(&sporeType, 0, types.SentinelEnd)
+	err := rc.Store.GetAll(&sporeType, 0, SentinelEnd)
 	if err != nil {
 		return nil, err
 	}
 	return Spores(sporeType), err
 }
 
-func LeaderSpore(rc *types.RunContext) (*Spore, error) {
+func LeaderSpore(rc *RunContext) (*Spore, error) {
 	spore := &Spore{}
 	leaderName, err := rc.Store.LeaderName()
 	if err != nil {
@@ -70,7 +76,7 @@ func LeaderSpore(rc *types.RunContext) (*Spore, error) {
 	return spore, nil
 }
 
-func GetSpore(rc *types.RunContext, id string) (*Spore, error) {
+func GetSpore(rc *RunContext, id string) (*Spore, error) {
 	spore := &Spore{}
 	err := rc.Store.Get(spore, id)
 	if err != nil {
@@ -79,7 +85,7 @@ func GetSpore(rc *types.RunContext, id string) (*Spore, error) {
 	return spore, nil
 }
 
-func AmLeader(rc *types.RunContext) (bool, error) {
+func AmLeader(rc *RunContext) (bool, error) {
 	leaderName, err := rc.Store.LeaderName()
 	if err != nil {
 		return false, err

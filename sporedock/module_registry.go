@@ -144,7 +144,6 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	loadBalancer := &modules.LoadBalancer{}
 	rpcserver := &modules.RPCServer{}
 
-
 	moduleRegistry.Start(false, store, api, webserver, planner, dockerRunner, loadBalancer, rpcserver)
 	return moduleRegistry
 }

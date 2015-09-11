@@ -1,9 +1,9 @@
 package modules
+
 import (
-	"sync"
 	"github.com/pnegahdar/sporedock/types"
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/utils"
+	"sync"
 )
 
 type EventModule struct {
@@ -11,11 +11,10 @@ type EventModule struct {
 	stopCast utils.SignalCast
 }
 
-
 func (em *EventModule) Init(rc *types.RunContext) {
 	rc.Lock()
 	defer rc.Unlock()
-	rc.EvetnManager = &cluster.EventManager{}
+	rc.EvetnManager = &types.EventManager{}
 }
 
 func (em *EventModule) Run(rc *types.RunContext) {
@@ -34,4 +33,3 @@ func (em *EventModule) ShouldRun(rc *types.RunContext) bool {
 func (em *EventModule) Stop(rc *types.RunContext) {
 	em.stopCast.Signal()
 }
-

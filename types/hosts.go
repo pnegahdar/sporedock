@@ -1,9 +1,9 @@
-package cluster
+package types
 
 const HostMapLogLength = 200
 
 type HostMap struct {
-	Host    string
+	Host     string
 	AppNames []string
 }
 

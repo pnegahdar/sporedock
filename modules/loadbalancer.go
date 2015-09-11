@@ -20,8 +20,8 @@ package modules
 //func UpdateRoutes(currentRoute *hostroute.HostRouter) {
 //	newHostRouter := hostroute.NewHostRouter()
 //	utils.LogDebug("Updating routes.")
-//	currentCluster := cluster.GetCurrentCluster()
-//	for _, webapp := range currentCluster.WebApps {
+//	currentCluster := types.GetCurrentCluster()
+//	for _, webapp := range currenttypes.WebApps {
 //		rr, err := roundrobin.NewRoundRobin()
 //		resp, err := server.EtcdClient().Get(cluster.GetAppLocationKey(webapp.GetName()), true, false)
 //		if err != nil && strings.Index(err.Error(), "Key not found") != -1 {

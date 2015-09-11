@@ -2,7 +2,6 @@ package modules
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
@@ -52,18 +51,18 @@ func (d *DockerRunner) ShouldRun(runContext *types.RunContext) bool {
 }
 
 func (d *DockerRunner) run() {
-	plan, err := cluster.CurrentPlan(d.runContext)
+	plan, err := types.CurrentPlan(d.runContext)
 	if err == types.ErrNoneFound {
 		return
 	}
 	utils.HandleError(err)
-	myJobs := plan.SporeSchedule[cluster.SporeID(d.runContext.MyMachineID)]
-	guidsToKeep := []cluster.RunGuid{}
+	myJobs := plan.SporeSchedule[types.SporeID(d.runContext.MyMachineID)]
+	guidsToKeep := []types.RunGuid{}
 	for runGuid, app := range myJobs {
-		cluster.PullApp(d.runContext, app)
-		cluster.RunApp(d.runContext, runGuid, app)
+		types.PullApp(d.runContext, app)
+		types.RunApp(d.runContext, runGuid, app)
 		guidsToKeep = append(guidsToKeep, runGuid)
 	}
-	cluster.CleanupRemovedApps(d.runContext, guidsToKeep)
-	cluster.CleanDeadApps(d.runContext)
+	types.CleanupRemovedApps(d.runContext, guidsToKeep)
+	types.CleanDeadApps(d.runContext)
 }

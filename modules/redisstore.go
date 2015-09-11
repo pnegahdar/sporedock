@@ -1,15 +1,14 @@
 package modules
 
 import (
+	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"net"
 	"strings"
 	"sync"
 	"time"
-	"fmt"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
@@ -73,7 +72,7 @@ func (rs RedisStore) runLeaderElection() {
 }
 
 func (rs *RedisStore) runPruning() {
-	spores := []cluster.Spore{}
+	spores := []types.Spore{}
 	err := rs.GetAll(&spores, 0, types.SentinelEnd)
 	utils.HandleError(err)
 	for _, spore := range spores {
@@ -100,7 +99,7 @@ func (rs *RedisStore) runCheckIn() {
 		rs.myType = types.TypeSporeLeader
 		rs.mu.Unlock()
 	}
-	spore := cluster.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
+	spore := types.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
 	err = rs.Update(spore, spore.ID, types.SentinelEnd)
 	if err != types.ErrIDExists {
 		utils.HandleError(err)
@@ -164,7 +163,7 @@ func (rs *RedisStore) setup() {
 func (rs *RedisStore) GetConn() redis.Conn {
 	rs.initOnce.Do(rs.setup)
 	conn := rs.connPool.Get()
-	if conn.Err() != nil{
+	if conn.Err() != nil {
 		utils.HandleError(conn.Err())
 	}
 	return conn
@@ -320,7 +319,7 @@ func (rs RedisStore) Publish(v interface{}, channels ...string) error {
 	}
 	conn := rs.GetConn()
 	defer conn.Close()
-	for _, channel := range (channels) {
+	for _, channel := range channels {
 		fullChanName := rs.keyJoiner(rs.rc, PubSubChannelNamePrefix, channel)
 		conn.Send("PUBLISH", fullChanName, dump)
 	}
@@ -343,7 +342,8 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 			for {
 				select {
 				case <-time.Tick(time.Millisecond * 200):
-					dat := psc.Receive(); data <- dat
+					dat := psc.Receive()
+					data <- dat
 				case <-exit:
 					return
 				}

@@ -134,19 +134,19 @@ func (cl Client) CreateGeneric(unpack interface{}, genType string) error {
 }
 
 //WEBAPP
-func (cl Client) GetApps() ([]cluster.App, error) {
-	webapps := []cluster.App{}
+func (cl Client) GetApps() ([]types.App, error) {
+	webapps := []types.App{}
 	err := cl.GetAllGeneric(&webapps, types.EntityTypeApp)
 	return webapps, err
 }
 
-func (cl Client) GetApp(id string) (*cluster.App, error) {
-	webapps := &cluster.App{}
+func (cl Client) GetApp(id string) (*types.App, error) {
+	webapps := &types.App{}
 	err := cl.GetGeneric(webapps, types.EntityTypeApp, id)
 	return webapps, err
 }
 
-func (cl Client) CreateApp(webapp *cluster.App) error {
+func (cl Client) CreateApp(webapp *types.App) error {
 	err := cl.CreateGeneric(webapp, types.EntityTypeApp)
 	return err
 }

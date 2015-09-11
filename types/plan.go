@@ -1,9 +1,8 @@
-package cluster
+package types
 
 import (
 	"errors"
 	"fmt"
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"math"
 	"sort"
@@ -32,11 +31,11 @@ type Plan struct {
 	setupOnce     sync.Once           `json:"-"`
 }
 
-func NewPlan(runContext *types.RunContext) (*Plan, error) {
+func NewPlan(runContext *RunContext) (*Plan, error) {
 	// Todo: exclude watchers
 	allSpores, err := AllSpores(runContext)
 	sort.Sort(sort.Reverse(allSpores))
-	if err == types.ErrNoneFound {
+	if err == ErrNoneFound {
 		return nil, err
 	}
 	utils.HandleError(err)
@@ -68,7 +67,7 @@ func (plan *Plan) Add(spore *Spore, app *App, guid RunGuid) {
 	plan.SizeRem[SporeID(spore.ID)] = plan.SizeRem[SporeID(spore.ID)] - app.Size()
 }
 
-func CurrentPlan(runContext *types.RunContext) (*Plan, error) {
+func CurrentPlan(runContext *RunContext) (*Plan, error) {
 	plan := &Plan{}
 	err := runContext.Store.Get(plan, currentPlanName)
 	if err != nil {
@@ -77,12 +76,12 @@ func CurrentPlan(runContext *types.RunContext) (*Plan, error) {
 	return plan, nil
 }
 
-func SavePlan(runContext *types.RunContext, plan *Plan) error {
-	err := runContext.Store.Update(plan, currentPlanName, types.SentinelEnd)
+func SavePlan(runContext *RunContext, plan *Plan) error {
+	err := runContext.Store.Update(plan, currentPlanName, SentinelEnd)
 	return err
 }
 
-type schedulerFunc func(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error)
+type schedulerFunc func(app *App, runContext *RunContext, currentPlan *Plan, newPlan *Plan) (bool, error)
 
 var Schedulers = []schedulerFunc{PinNodeScheduler, PersistExistingScheduler}
 var FinalScheduler = FirstFitsDecreasingScheduler
@@ -91,7 +90,7 @@ func HandleSchedulerError(err error, appName AppID, fnName string) {
 	utils.LogWarnF("Ran into error [%v] when scheduling app %v on %v", err.Error(), appName, fnName)
 }
 
-func PinNodeScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
+func PinNodeScheduler(app *App, runContext *RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
 	if app.PinSpore != "" {
 		spore, ok := newPlan.SporeMap[SporeID(app.PinSpore)]
 		if !ok {
@@ -105,7 +104,7 @@ func PinNodeScheduler(app *App, runContext *types.RunContext, currentPlan *Plan,
 	return false, nil
 }
 
-func PersistExistingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
+func PersistExistingScheduler(app *App, runContext *RunContext, currentPlan *Plan, newPlan *Plan) (bool, error) {
 	if sporeguids, ok := currentPlan.AppSchedule[AppID(app.ID)]; ok {
 		packCount := int(math.Min(float64(app.CountRemaining), float64(len(sporeguids))))
 		for i := 0; i < packCount; i++ {
@@ -121,7 +120,7 @@ func PersistExistingScheduler(app *App, runContext *types.RunContext, currentPla
 	return false, nil
 }
 
-func FirstFitsDecreasingScheduler(app *App, runContext *types.RunContext, currentPlan *Plan, newPlan *Plan) error {
+func FirstFitsDecreasingScheduler(app *App, runContext *RunContext, currentPlan *Plan, newPlan *Plan) error {
 	var largestSpore *Spore
 	largestRemSize := 0.0
 	for i := 0; i < app.CountRemaining; i++ {

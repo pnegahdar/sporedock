@@ -1,7 +1,6 @@
-package cluster
+package types
 
 import (
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
 )
@@ -17,23 +16,23 @@ type EventMessage struct {
 	Event     Event
 }
 
-func (ev Event) emit(rc *types.RunContext, channels ...string) {
+func (ev Event) emit(rc *RunContext, channels ...string) {
 	myID := rc.MyMachineID
 	message := EventMessage{Emitter: SporeID(myID), EmitterIP: rc.MyIP.String(), Event: ev}
 	rc.Store.Publish(message, channels...)
 }
 
-func (ev Event) EmitAll(rc *types.RunContext) {
+func (ev Event) EmitAll(rc *RunContext) {
 	spores, err := AllSpores(rc)
 	utils.HandleError(err)
 	sporeIDS := []string{}
-	for _, spore := range (spores) {
+	for _, spore := range spores {
 		sporeIDS = append(sporeIDS, spore.ID)
 	}
 }
 
 func (ev *Event) Matches(matching Event) bool {
-	if ev == matching || ev == EventAll {
+	if *ev == matching || *ev == EventAll {
 		return true
 	}
 	return false
@@ -44,29 +43,26 @@ type eventListner struct {
 	receive  chan EventMessage
 }
 
-
 type EventManager struct {
 	listeners map[Event][]eventListner
-	manager   *types.SubscriptionManager
+	manager   *SubscriptionManager
 	initOnce  sync.Once
 }
 
-func (em *EventManager) init(rc types.RunContext) {
+func (em *EventManager) init(rc *RunContext) {
 	em.listeners = map[Event][]eventListner{}
 
 }
 
-func (em *EventManager) Listen(rc *types.RunContext, event Event, exit *utils.SignalCast) chan EventMessage {
-	sync.Once.Do(func() {em.init(rc)})
+func (em *EventManager) Listen(rc *RunContext, event Event, exit *utils.SignalCast) {
+	em.initOnce.Do(func() { em.init(rc) })
 	go func() {
 		exitChan, _ := exit.Listen()
 		for {
 			select {
 			case <-exitChan:
 				return
-			case <-
 			}
 		}
 	}()
 }
-

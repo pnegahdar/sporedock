@@ -1,9 +1,8 @@
-package cluster
+package types
 
 import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 )
 
@@ -19,11 +18,11 @@ type App struct {
 	ID                      AppID
 	Image                   string
 	BalancedInternalTCPPort int
-	types.Sizable
+	Sizable
 }
 
 func (a App) Size() float64 {
-	return types.GetSize(a.Cpus, a.Mem)
+	return GetSize(a.Cpus, a.Mem)
 }
 
 type Apps []App
@@ -31,10 +30,10 @@ type Apps []App
 func (a Apps) Len() int      { return len(a) }
 func (a Apps) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a Apps) Less(i, j int) bool {
-	return types.GetSize(a[i].Cpus, a[i].Mem) < types.GetSize(a[j].Cpus, a[j].Mem)
+	return GetSize(a[i].Cpus, a[i].Mem) < GetSize(a[j].Cpus, a[j].Mem)
 }
 
-func (wa App) DockerContainerOptions(runContext *types.RunContext, guid RunGuid) docker.CreateContainerOptions {
+func (wa App) DockerContainerOptions(runContext *RunContext, guid RunGuid) docker.CreateContainerOptions {
 	namePrefix := runContext.NamespacePrefix("", string(guid))
 	policyName := fmt.Sprintf("%vRP", namePrefix)
 	restartPolicy := docker.RestartPolicy{
@@ -68,7 +67,7 @@ func (wa App) Env() map[string]string {
 	return utils.FlattenHashes(envList...)
 }
 
-func (wa *App) Validate(rc *types.RunContext) error {
+func (wa *App) Validate(rc *RunContext) error {
 	return nil
 }
 
@@ -76,9 +75,9 @@ func (wa *App) GetID() string {
 	return string(wa.ID)
 }
 
-func AllApps(runContext *types.RunContext) ([]App, error) {
+func AllApps(runContext *RunContext) ([]App, error) {
 	apps := []App{}
-	err := runContext.Store.GetAll(&apps, 0, types.SentinelEnd)
+	err := runContext.Store.GetAll(&apps, 0, SentinelEnd)
 	if err != nil {
 		return nil, err
 	}

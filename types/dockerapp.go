@@ -1,18 +1,17 @@
-package cluster
+package types
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"strings"
 )
 
 type DockerApp interface {
-	DockerContainerOptions(runContext *types.RunContext, guid RunGuid) docker.CreateContainerOptions
+	DockerContainerOptions(runContext *RunContext, guid RunGuid) docker.CreateContainerOptions
 	GetID() string
 }
 
-func nameSpacePrefix(runContext *types.RunContext) string { return runContext.NamespacePrefix("") }
+func nameSpacePrefix(runContext *RunContext) string { return runContext.NamespacePrefix("") }
 
 func hasApp(guid RunGuid, containerList []docker.APIContainers) bool {
 	for _, cont := range containerList {
@@ -51,7 +50,7 @@ func parseDockerImage(image string) (parsedImage, error) {
 	return imgMeta, nil
 }
 
-func PullApp(runContext *types.RunContext, app DockerApp) {
+func PullApp(runContext *RunContext, app DockerApp) {
 	imgs, err := runContext.DockerClient.ListImages(docker.ListImagesOptions{All: true})
 	utils.HandleError(err)
 	parsedImage, err := parseDockerImage(app.DockerContainerOptions(runContext, "").Config.Image)
@@ -68,7 +67,7 @@ func PullApp(runContext *types.RunContext, app DockerApp) {
 	utils.HandleError(err)
 }
 
-func createContainer(runContext *types.RunContext, guid RunGuid, app DockerApp) string {
+func createContainer(runContext *RunContext, guid RunGuid, app DockerApp) string {
 	utils.LogInfoF("Creating container for %v.", app.GetID())
 	containerConfig := app.DockerContainerOptions(runContext, guid)
 	container, err := runContext.DockerClient.CreateContainer(containerConfig)
@@ -76,14 +75,14 @@ func createContainer(runContext *types.RunContext, guid RunGuid, app DockerApp) 
 	return container.ID
 }
 
-func runApp(runContext *types.RunContext, containerID string, guid RunGuid, app DockerApp) {
+func runApp(runContext *RunContext, containerID string, guid RunGuid, app DockerApp) {
 	utils.LogInfoF("Running app %v of %v", containerID, app.GetID())
 	err := runContext.DockerClient.StartContainer(containerID, app.DockerContainerOptions(runContext, guid).HostConfig)
 	utils.HandleError(err)
 }
 
 // Removes all the locations for nodes in the cluster that no longer exist.
-func CleanDeadApps(runContext *types.RunContext) {
+func CleanDeadApps(runContext *RunContext) {
 	listContainerOptions := docker.ListContainersOptions{All: true}
 	containersAll, err := runContext.DockerClient.ListContainers(listContainerOptions)
 	utils.HandleError(err)
@@ -104,7 +103,7 @@ func CleanDeadApps(runContext *types.RunContext) {
 
 	}
 }
-func CleanupRemovedApps(runContext *types.RunContext, guidsToKeep []RunGuid) {
+func CleanupRemovedApps(runContext *RunContext, guidsToKeep []RunGuid) {
 	listContainerOptions := docker.ListContainersOptions{All: true}
 	containersAll, err := runContext.DockerClient.ListContainers(listContainerOptions)
 	utils.HandleError(err)
@@ -124,7 +123,7 @@ func CleanupRemovedApps(runContext *types.RunContext, guidsToKeep []RunGuid) {
 		}
 	}
 }
-func RunApp(runContext *types.RunContext, guid RunGuid, app *App) {
+func RunApp(runContext *RunContext, guid RunGuid, app *App) {
 	containersAll, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: true})
 	utils.HandleError(err)
 	containersRunning, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: false})

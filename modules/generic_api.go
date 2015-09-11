@@ -3,7 +3,6 @@ package modules
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/pnegahdar/sporedock/cluster"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"io/ioutil"
@@ -23,9 +22,9 @@ type Route struct {
 
 type Routes []Route
 
-var genCreate = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
-var genIndex = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
-var genDelete = map[string]types.Validable{types.EntityTypeApp: &cluster.App{}}
+var genCreate = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
+var genIndex = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
+var genDelete = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
 
 func frontendDir() string {
 	_, filename, _, _ := runtime.Caller(1)
@@ -167,7 +166,7 @@ func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	var validable interface{}
 	switch genericTypeID {
 	case types.EntityTypeApp:
-		genericType := []cluster.App{}
+		genericType := []types.App{}
 		err := sa.runContext.Store.GetAll(&genericType, 0, types.SentinelEnd)
 		if err != nil {
 			jsonErrorResponse(w, err, 400)
