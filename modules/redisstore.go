@@ -9,11 +9,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"fmt"
 )
 
 const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes for something to be considered gone.
 const CheckinExpireMs = 5000
 const LeadershipExpireMs = 3000
+const PubSubChannelNamePrefix = "pubsub"
 
 func CreateStore(context *types.RunContext, connectionString, group string) types.SporeStore {
 	if strings.HasPrefix(connectionString, "redis://") {
@@ -162,6 +164,9 @@ func (rs *RedisStore) setup() {
 func (rs *RedisStore) GetConn() redis.Conn {
 	rs.initOnce.Do(rs.setup)
 	conn := rs.connPool.Get()
+	if conn.Err() != nil{
+		utils.HandleError(conn.Err())
+	}
 	return conn
 }
 
@@ -306,6 +311,61 @@ func (rs RedisStore) LeaderName() (string, error) {
 	defer conn.Close()
 	name, err := redis.String(conn.Do("GET", leaderKey))
 	return name, wrapError(err)
+}
+
+func (rs RedisStore) Publish(v interface{}, channels ...string) error {
+	dump, err := utils.Marshall(v)
+	if err != nil {
+		return err
+	}
+	conn := rs.GetConn()
+	defer conn.Close()
+	for _, channel := range (channels) {
+		fullChanName := rs.keyJoiner(rs.rc, PubSubChannelNamePrefix, channel)
+		conn.Send("PUBLISH", fullChanName, dump)
+	}
+	conn.Flush()
+	_, err = conn.Receive()
+	return err
+}
+
+func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, error) {
+	messages := make(chan string)
+	sm := &types.SubscriptionManager{ID: utils.GenGuid(), Messages: messages, Exit: utils.SignalCast{}}
+	go func() {
+		conn := rs.GetConn()
+		psc := redis.PubSubConn{conn}
+		defer psc.Close()
+		exit, _ := sm.Exit.Listen()
+		data := make(chan interface{})
+		go func() {
+			exit, _ := sm.Exit.Listen()
+			for {
+				select {
+				case <-time.Tick(time.Millisecond * 200):
+					dat := psc.Receive(); data <- dat
+				case <-exit:
+					return
+				}
+			}
+		}()
+		for {
+			select {
+			case <-exit:
+				return
+			case dat := <-data:
+				switch v := dat.(type) {
+				case redis.Message:
+					fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+				case redis.Subscription:
+					continue
+				case error:
+					utils.HandleError(v)
+				}
+			}
+		}
+	}()
+	return sm, nil
 }
 
 func NewRedisStore(context *types.RunContext, redisConnecitonURI, group string) types.SporeStore {

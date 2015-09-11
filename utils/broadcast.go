@@ -6,7 +6,7 @@ import (
 )
 
 type SignalCast struct {
-	sync.Mutex
+	mu             sync.Mutex
 	name           string
 	stop           chan bool
 	alreadyFlipped bool
@@ -14,8 +14,8 @@ type SignalCast struct {
 }
 
 func (sc *SignalCast) Listen() (chan bool, string) {
-	sc.Lock()
-	defer sc.Unlock()
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
 	sc.init()
 	ret := make(chan bool, 3)
 	if sc.alreadyFlipped {
@@ -44,8 +44,8 @@ func (sc *SignalCast) init() {
 }
 
 func (sc *SignalCast) Signal() {
-	sc.Lock()
-	defer sc.Unlock()
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
 	sc.init()
 	wg := sync.WaitGroup{}
 	sc.alreadyFlipped = true

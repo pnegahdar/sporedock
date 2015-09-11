@@ -39,7 +39,7 @@ func (d *DockerRunner) Run(runContext *types.RunContext) {
 	exit, _ := d.stopCast.Listen()
 	for {
 		select {
-		case <-time.After(updateEndpointsEvery):
+		case <-time.After(syncDockerEveryD):
 			d.run()
 		case <-exit:
 			return

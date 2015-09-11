@@ -4,7 +4,7 @@ const HostMapLogLength = 200
 
 type HostMap struct {
 	Host    string
-	AppName string
+	AppNames []string
 }
 
 func (hm HostMap) Validate() error {

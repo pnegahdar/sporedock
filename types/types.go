@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"github.com/pnegahdar/sporedock/utils"
 )
 
 type SporeType string
@@ -64,6 +65,12 @@ func GetSize(cpu float64, mem float64) float64 {
 	return cpu + (mem * CpuMemMultiplier)
 }
 
+type SubscriptionManager struct {
+	ID       string
+	Messages chan string
+	Exit     utils.SignalCast
+}
+
 type SporeStore interface {
 	Module
 	Get(i interface{}, id string) error
@@ -73,6 +80,8 @@ type SporeStore interface {
 	Exists(v interface{}, id string) (bool, error)
 	Delete(v interface{}, id string) error
 	DeleteAll(v interface{}) error
+	Publish(v interface{}, channels...string) error
+	Subscribe(channel string) (*SubscriptionManager, error)
 	IsHealthy(sporeName string) (bool, error)
 	LeaderName() (string, error)
 }
@@ -147,7 +156,7 @@ type RunContext struct {
 }
 
 func (rc RunContext) NamespacePrefixParts() []string {
-	return []string{"sporedock", rc.MyGroup, rc.MyMachineID}
+	return []string{"sporedock", rc.MyGroup}
 }
 
 func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
