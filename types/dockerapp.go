@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pnegahdar/sporedock/utils"
 	"strings"
@@ -79,6 +80,7 @@ func runApp(runContext *RunContext, containerID string, guid RunGuid, app Docker
 	utils.LogInfoF("Running app %v of %v", containerID, app.GetID())
 	err := runContext.DockerClient.StartContainer(containerID, app.DockerContainerOptions(runContext, guid).HostConfig)
 	utils.HandleError(err)
+	EventDockerAppStart.EmitToSelf(runContext)
 }
 
 // Removes all the locations for nodes in the cluster that no longer exist.

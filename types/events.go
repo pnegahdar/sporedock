@@ -7,7 +7,7 @@ import (
 
 type Event string
 
-var EventAll Event = ""
+var EventAll Event = "*"
 var EventDockerAppStart Event = "docker:app:started"
 
 type EventMessage struct {
@@ -16,19 +16,25 @@ type EventMessage struct {
 	Event     Event
 }
 
-func (ev Event) emit(rc *RunContext, channels ...string) {
+func (ev *Event) emit(rc *RunContext, channels ...string) {
 	myID := rc.MyMachineID
-	message := EventMessage{Emitter: SporeID(myID), EmitterIP: rc.MyIP.String(), Event: ev}
-	rc.Store.Publish(message, channels...)
+	message := EventMessage{Emitter: SporeID(myID), EmitterIP: rc.MyIP.String(), Event: *ev}
+	err := rc.Store.Publish(message, channels...)
+	utils.HandleError(err)
 }
 
-func (ev Event) EmitAll(rc *RunContext) {
+func (ev *Event) EmitAll(rc *RunContext) {
 	spores, err := AllSpores(rc)
 	utils.HandleError(err)
 	sporeIDS := []string{}
 	for _, spore := range spores {
 		sporeIDS = append(sporeIDS, spore.ID)
 	}
+	ev.emit(rc, sporeIDS...)
+}
+
+func (ev *Event) EmitToSelf(rc *RunContext) {
+	ev.emit(rc, rc.MyMachineID)
 }
 
 func (ev *Event) Matches(matching Event) bool {
@@ -38,31 +44,57 @@ func (ev *Event) Matches(matching Event) bool {
 	return false
 }
 
-type eventListner struct {
-	exitChan *utils.SignalCast
-	receive  chan EventMessage
-}
-
 type EventManager struct {
-	listeners map[Event][]eventListner
-	manager   *SubscriptionManager
-	initOnce  sync.Once
+	listeners  map[Event]map[string]chan EventMessage
+	manager    *SubscriptionManager
+	initOnce   sync.Once
+	ExitSignal utils.SignalCast
+	sync.Mutex
 }
 
 func (em *EventManager) init(rc *RunContext) {
-	em.listeners = map[Event][]eventListner{}
+	em.listeners = map[Event]map[string]chan EventMessage{}
 
 }
 
-func (em *EventManager) Listen(rc *RunContext, event Event, exit *utils.SignalCast) {
+func (em *EventManager) BroadcastToListeners(message EventMessage) {
+	em.Lock()
+	if listeners, ok := em.listeners[message.Event]; ok {
+		for _, listener := range listeners {
+			go func() { listener <- message }()
+		}
+	}
+	em.Unlock()
+}
+
+func (em *EventManager) Listen(rc *RunContext, event Event, exit *utils.SignalCast) chan EventMessage {
 	em.initOnce.Do(func() { em.init(rc) })
+	message := make(chan EventMessage)
+	listenerID := utils.GenGuid()
+	em.Lock()
+	if _, ok := em.listeners[event]; !ok {
+		em.listeners[event] = map[string]chan EventMessage{}
+	}
+	em.listeners[event][listenerID] = message
+	em.Unlock()
 	go func() {
-		exitChan, _ := exit.Listen()
+		exitFromParent, _ := em.ExitSignal.Listen()
+		exitFromChild, _ := exit.Listen()
+		removeMe := func() {
+			em.Lock()
+			delete(em.listeners[event], listenerID)
+			em.Unlock()
+		}
 		for {
 			select {
-			case <-exitChan:
+			case <-exitFromParent:
+				removeMe()
+				return
+			case <-exitFromChild:
+				removeMe()
 				return
 			}
 		}
 	}()
+	return message
 }

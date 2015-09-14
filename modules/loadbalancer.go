@@ -174,10 +174,13 @@ func (lb *LoadBalancer) Stop() {
 
 func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 	exit, _ := lb.stopCast.Listen()
+	appRun := runContext.EventManager.Listen(runContext, types.EventDockerAppStart, &lb.stopCast)
 	for {
 		select {
 		case <-time.After(time.Second * 10):
 			fmt.Println("YO")
+		case <-appRun:
+			fmt.Println("AN APP HAS RAN")
 		case <-exit:
 			return
 		}

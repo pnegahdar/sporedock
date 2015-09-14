@@ -331,11 +331,15 @@ func (rs RedisStore) Publish(v interface{}, channels ...string) error {
 func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, error) {
 	messages := make(chan string)
 	sm := &types.SubscriptionManager{ID: utils.GenGuid(), Messages: messages, Exit: utils.SignalCast{}}
+	conn := rs.GetConn()
+	psc := redis.PubSubConn{conn}
+	fullChanName := rs.keyJoiner(rs.rc, PubSubChannelNamePrefix, channel)
+	err := psc.Subscribe(fullChanName)
+	if err != nil {
+		return nil, err
+	}
 	go func() {
-		conn := rs.GetConn()
-		psc := redis.PubSubConn{conn}
 		defer psc.Close()
-		exit, _ := sm.Exit.Listen()
 		data := make(chan interface{})
 		go func() {
 			exit, _ := sm.Exit.Listen()
@@ -349,6 +353,7 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 				}
 			}
 		}()
+		exit, _ := sm.Exit.Listen()
 		for {
 			select {
 			case <-exit:
@@ -356,7 +361,7 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 			case dat := <-data:
 				switch v := dat.(type) {
 				case redis.Message:
-					fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+					go func() { sm.Messages <- string(v.Data) }()
 				case redis.Subscription:
 					continue
 				case error:

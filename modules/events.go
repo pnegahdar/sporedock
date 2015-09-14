@@ -7,17 +7,36 @@ import (
 )
 
 type EventModule struct {
-	initOnce sync.Once
-	stopCast utils.SignalCast
+	initOnce   sync.Once
+	stopCast   utils.SignalCast
+	subManager *types.SubscriptionManager
 }
 
 func (em *EventModule) Init(rc *types.RunContext) {
 	rc.Lock()
 	defer rc.Unlock()
-	rc.EvetnManager = &types.EventManager{}
+	rc.EventManager = &types.EventManager{}
 }
 
 func (em *EventModule) Run(rc *types.RunContext) {
+	subManager, err := rc.Store.Subscribe(rc.MyMachineID)
+	utils.HandleError(err)
+	em.subManager = subManager
+	go func() {
+		exit, _ := em.stopCast.Listen()
+		for {
+			select {
+			case message := <-em.subManager.Messages:
+				eventMessage := &types.EventMessage{}
+				utils.Unmarshall(message, eventMessage)
+				rc.EventManager.BroadcastToListeners(*eventMessage)
+			case <-exit:
+				rc.EventManager.ExitSignal.Signal()
+				em.subManager.Exit.Signal()
+				return
+			}
+		}
+	}()
 	exit, _ := em.stopCast.Listen()
 	<-exit
 }
@@ -30,6 +49,6 @@ func (em *EventModule) ShouldRun(rc *types.RunContext) bool {
 	return true
 }
 
-func (em *EventModule) Stop(rc *types.RunContext) {
+func (em *EventModule) Stop() {
 	em.stopCast.Signal()
 }

@@ -13,7 +13,7 @@ type RunContext struct {
 	MyIP             net.IP
 	MyType           SporeType
 	MyGroup          string
-	EvetnManager     *EventManager
+	EventManager     *EventManager
 	RPCManager       *RPCManager
 	WebServerManager *WebServerManager
 	DockerClient     *docker.Client
