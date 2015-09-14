@@ -15,9 +15,9 @@ const CheckinExpireMs = 5000
 const LeadershipExpireMs = 3000
 const PubSubChannelNamePrefix = "pubsub"
 
-func CreateStore(context *types.RunContext, connectionString, group string) types.SporeStore {
+func CreateStore(connectionString, group string) types.SporeStore {
 	if strings.HasPrefix(connectionString, "redis://") {
-		return NewRedisStore(context, connectionString, group)
+		return NewRedisStore(connectionString)
 	} else {
 		utils.HandleError(types.ErrConnectionString)
 		return nil
@@ -43,7 +43,7 @@ type RedisStore struct {
 	myIP             net.IP
 	myType           types.SporeType
 	myMachineID      string
-	rc               *types.RunContext
+	runContext       *types.RunContext
 	stopCast         utils.SignalCast
 	stopCastMu       sync.Mutex
 }
@@ -62,7 +62,7 @@ func (rs RedisStore) typeKey(runContext *types.RunContext, v interface{}, parts 
 
 func (rs RedisStore) runLeaderElection() {
 	if rs.myType != types.TypeSporeWatcher {
-		leaderKey := rs.keyJoiner(rs.rc, "_redis", "_leader")
+		leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 		conn := rs.GetConn()
 		defer conn.Close()
 		_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
@@ -90,7 +90,7 @@ func (rs *RedisStore) runCheckIn() {
 	conn := rs.GetConn()
 	defer conn.Close()
 	//Todo protect for duped names
-	memberKey := rs.keyJoiner(rs.rc, "_redis", "_member", rs.myMachineID)
+	memberKey := rs.keyJoiner(rs.runContext, "_redis", "_member", rs.myMachineID)
 	leader, err := rs.LeaderName()
 	utils.HandleError(err)
 	if leader == rs.myMachineID {
@@ -125,9 +125,6 @@ func newRedisConnPool(server string) *redis.Pool {
 	}
 }
 
-func (rs *RedisStore) Init(runContext *types.RunContext) {
-	return
-}
 
 func (rs *RedisStore) Run(context *types.RunContext) {
 	rs.mu.Lock()
@@ -152,15 +149,25 @@ func (rs *RedisStore) setup() {
 	if rs.connectionString == "" {
 		utils.HandleError(types.ErrConnectionStringNotSet)
 	}
-	rs.group = rs.rc.MyGroup
-	rs.myIP = rs.rc.MyIP
-	rs.myType = rs.rc.MyType
-	rs.myMachineID = rs.rc.MyMachineID
+	rs.group = rs.runContext.MyGroup
+	rs.myIP = rs.runContext.MyIP
+	rs.myType = rs.runContext.MyType
+	rs.myMachineID = rs.runContext.MyMachineID
 	rs.connPool = newRedisConnPool(rs.connectionString)
 }
 
+func (rs *RedisStore) Init(runContext *types.RunContext) {
+	rs.initOnce.Do(func() {
+		rs.runContext = runContext
+		rs.setup()
+		runContext.Lock()
+		runContext.Store = rs
+		runContext.Unlock()
+	})
+	return
+}
+
 func (rs *RedisStore) GetConn() redis.Conn {
-	rs.initOnce.Do(rs.setup)
 	conn := rs.connPool.Get()
 	if conn.Err() != nil {
 		utils.HandleError(conn.Err())
@@ -186,7 +193,7 @@ func (rs RedisStore) ShouldRun(context *types.RunContext) bool {
 func (rs RedisStore) Get(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HGET", rs.typeKey(rs.rc, v), id)
+	resp, err := conn.Do("HGET", rs.typeKey(rs.runContext, v), id)
 	data, err := redis.String(resp, err)
 	if err != nil {
 		return wrapError(err)
@@ -201,7 +208,7 @@ func (rs RedisStore) Get(v interface{}, id string) error {
 func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HEXISTS", rs.typeKey(rs.rc, v), id)
+	resp, err := conn.Do("HEXISTS", rs.typeKey(rs.runContext, v), id)
 	exists, err := redis.Bool(resp, err)
 	if err != nil {
 		return false, wrapError(err)
@@ -213,7 +220,7 @@ func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
 func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	resp, err := conn.Do("HVALS", rs.typeKey(rs.rc, v))
+	resp, err := conn.Do("HVALS", rs.typeKey(rs.runContext, v))
 	data, err := redis.Strings(resp, err)
 	if err != nil {
 		return wrapError(err)
@@ -232,7 +239,7 @@ func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	typeKey := rs.typeKey(rs.rc, v)
+	typeKey := rs.typeKey(rs.runContext, v)
 	data, err := utils.Marshall(v)
 	if err != nil {
 		return wrapError(err)
@@ -249,7 +256,7 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 		return wrapError(err)
 	}
 	if wasSet == 1 || update {
-		logKey := rs.typeKey(rs.rc, v, "__log")
+		logKey := rs.typeKey(rs.runContext, v, "__log")
 		_, err = conn.Do("LPUSH", logKey, data)
 		if err != nil {
 			return wrapError(err)
@@ -277,7 +284,7 @@ func (rs RedisStore) Update(v interface{}, id string, logTrim int) error {
 func (rs RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(rs.rc, v), id))
+	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(rs.runContext, v), id))
 	if exists != 1 {
 		return types.ErrNoneFound
 	}
@@ -287,14 +294,14 @@ func (rs RedisStore) Delete(v interface{}, id string) error {
 func (rs RedisStore) DeleteAll(v interface{}) error {
 	conn := rs.GetConn()
 	defer conn.Close()
-	_, err := conn.Do("DEL", rs.typeKey(rs.rc, v))
+	_, err := conn.Do("DEL", rs.typeKey(rs.runContext, v))
 	return wrapError(err)
 }
 
 func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
-	memberKey := rs.keyJoiner(rs.rc, "_redis", "_member", sporeName)
+	memberKey := rs.keyJoiner(rs.runContext, "_redis", "_member", sporeName)
 	resp, err := conn.Do("EXISTS", memberKey)
 	exists, err := redis.Bool(resp, err)
 	if err != nil {
@@ -304,7 +311,7 @@ func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 }
 
 func (rs RedisStore) LeaderName() (string, error) {
-	leaderKey := rs.keyJoiner(rs.rc, "_redis", "_leader")
+	leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 	conn := rs.GetConn()
 	defer conn.Close()
 	name, err := redis.String(conn.Do("GET", leaderKey))
@@ -319,7 +326,7 @@ func (rs RedisStore) Publish(v interface{}, channels ...string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	for _, channel := range channels {
-		fullChanName := rs.keyJoiner(rs.rc, PubSubChannelNamePrefix, channel)
+		fullChanName := rs.keyJoiner(rs.runContext, PubSubChannelNamePrefix, channel)
 		conn.Send("PUBLISH", fullChanName, dump)
 	}
 	conn.Flush()
@@ -332,7 +339,7 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 	sm := &types.SubscriptionManager{ID: utils.GenGuid(), Messages: messages, Exit: utils.SignalCast{}}
 	conn := rs.GetConn()
 	psc := redis.PubSubConn{conn}
-	fullChanName := rs.keyJoiner(rs.rc, PubSubChannelNamePrefix, channel)
+	fullChanName := rs.keyJoiner(rs.runContext, PubSubChannelNamePrefix, channel)
 	err := psc.Subscribe(fullChanName)
 	if err != nil {
 		return nil, err
@@ -381,7 +388,7 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 	return sm, nil
 }
 
-func NewRedisStore(context *types.RunContext, redisConnecitonURI, group string) types.SporeStore {
+func NewRedisStore(redisConnecitonURI string) types.SporeStore {
 	redisConnecitonURI = strings.TrimPrefix(redisConnecitonURI, "redis://")
-	return &RedisStore{rc: context, connectionString: redisConnecitonURI, group: group}
+	return &RedisStore{connectionString: redisConnecitonURI}
 }

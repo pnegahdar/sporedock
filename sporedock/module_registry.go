@@ -2,8 +2,6 @@ package sporedock
 
 import (
 	"fmt"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/gorilla/mux"
 	"github.com/pnegahdar/sporedock/modules"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
@@ -121,23 +119,11 @@ func NewModuleRegistry(rc *types.RunContext) *ModuleRegistry {
 
 func CreateAndRun(connectionString, groupName, machineID, machineIP string, webServerBind string, rpcServerBind string) *ModuleRegistry {
 	myIP := net.ParseIP(machineIP)
-	webServerRouter := mux.NewRouter().StrictSlash(true)
-
-	// Create Run Context
-	dockerClient, err := docker.NewClientFromEnv()
-	utils.HandleError(err)
-
-	// Setup Managers
-	rpcManager := (&types.RPCManager{RPCServerBind: rpcServerBind}).Init()
-	webserverManager := &types.WebServerManager{WebServerBind: webServerBind, WebServerRouter: webServerRouter}
-
-	runContext := types.RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName, WebServerManager: webserverManager, DockerClient: dockerClient, RPCManager: rpcManager}
+	runContext := types.NewRunContext(machineID, myIP, groupName)
 	// Register and run
-	moduleRegistry := NewModuleRegistry(&runContext)
+	moduleRegistry := NewModuleRegistry(runContext)
 
-	store := modules.CreateStore(&runContext, connectionString, groupName)
-
-	runContext.Store = store
+	store := modules.CreateStore(connectionString, groupName)
 	api := &modules.SporeAPI{}
 	webserver := &modules.WebServer{}
 	cli := &modules.Cli{}
@@ -147,6 +133,6 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	loadBalancer := &modules.LoadBalancer{}
 	rpcserver := &modules.RPCServer{}
 
-	moduleRegistry.Start(false, cli, store, api, webserver, eventServer, planner, dockerRunner, loadBalancer, rpcserver)
+	moduleRegistry.Start(false, cli, store, webserver, api, eventServer, planner, dockerRunner, loadBalancer, rpcserver)
 	return moduleRegistry
 }

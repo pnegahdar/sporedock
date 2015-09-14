@@ -9,10 +9,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/gorilla/mux"
 )
 
 type WebServer struct {
 	sync.Mutex
+	initOnce sync.Once
 	stopCast   utils.SignalCast
 	stopCastMu sync.Mutex
 }
@@ -26,7 +28,14 @@ func (ws *WebServer) ProcName() string {
 }
 
 func (ws *WebServer) Init(runContext *types.RunContext) {
-	return
+	ws.initOnce.Do(func(){
+		webServerRouter := mux.NewRouter().StrictSlash(true)
+		webserverManager := &types.WebServerManager{WebServerBind: ":5000", WebServerRouter: webServerRouter}
+		runContext.Lock()
+		runContext.WebServerManager = webserverManager
+		defer runContext.Unlock()
+	})
+
 }
 
 func (ws *WebServer) Run(runContext *types.RunContext) {

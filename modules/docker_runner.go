@@ -20,9 +20,11 @@ type DockerRunner struct {
 func (d *DockerRunner) Init(runContext *types.RunContext) {
 	d.initOnce.Do(func() {
 		client, err := docker.NewClientFromEnv()
-		d.client = client
-		d.runContext = runContext
 		utils.HandleError(err)
+		runContext.Lock()
+		runContext.DockerClient = client
+		runContext.Unlock()
+		d.runContext = runContext
 	})
 }
 

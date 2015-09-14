@@ -15,11 +15,15 @@ type RPCServer struct {
 }
 
 func (rpc *RPCServer) Init(runContext *types.RunContext) {
-	// Requires one fake func to run/init
-	runContext.RPCManager.RPCAddFunc("_interfal_fake", func() {})
 	rpc.initOnce.Do(func() {
+		// Requires one fake func to run/init
+		rpcManager := (&types.RPCManager{RPCServerBind: ":5001"}).Init()
+		rpcManager.RPCAddFunc("_interfal_fake", func() {})
+		runContext.Lock()
+		runContext.RPCManager = rpcManager
+		runContext.Unlock()
 		rpc.runContext = runContext
-		rpc.server = gorpc.NewTCPServer(runContext.RPCManager.RPCServerBind, runContext.RPCManager.RPCDispatcher().NewHandlerFunc())
+		rpc.server = gorpc.NewTCPServer(rpcManager.RPCServerBind, rpcManager.RPCDispatcher().NewHandlerFunc())
 	})
 }
 
