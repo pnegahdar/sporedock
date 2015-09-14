@@ -136,15 +136,17 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	moduleRegistry := NewModuleRegistry(&runContext)
 
 	store := modules.CreateStore(&runContext, connectionString, groupName)
+
 	runContext.Store = store
 	api := &modules.SporeAPI{}
 	webserver := &modules.WebServer{}
+	cli := &modules.Cli{}
 	eventServer := &modules.EventModule{}
 	planner := &modules.Planner{}
 	dockerRunner := &modules.DockerRunner{}
 	loadBalancer := &modules.LoadBalancer{}
 	rpcserver := &modules.RPCServer{}
 
-	moduleRegistry.Start(false, store, api, webserver, eventServer, planner, dockerRunner, loadBalancer, rpcserver)
+	moduleRegistry.Start(false, cli, store, api, webserver, eventServer, planner, dockerRunner, loadBalancer, rpcserver)
 	return moduleRegistry
 }

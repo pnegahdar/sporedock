@@ -17,13 +17,17 @@ func (sc *SignalCast) Listen() (chan bool, string) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	sc.init()
-	ret := make(chan bool, 3)
+	ret := make(chan bool)
 	if sc.alreadyFlipped {
-		ret <- true
+		go func() {
+			select {
+			case ret <- true:
+			default:
+				return
+			}}()
 	}
 	name := GenGuid()
-	_, ok := sc.listeners[name]
-	if !ok {
+	if _, ok := sc.listeners[name]; !ok {
 		sc.listeners[name] = ret
 	} else {
 		HandleError(errors.New("Duplicate handler added" + sc.name))
@@ -47,14 +51,15 @@ func (sc *SignalCast) Signal() {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 	sc.init()
-	wg := sync.WaitGroup{}
 	sc.alreadyFlipped = true
 	for k := range sc.listeners {
-		wg.Add(1)
+		k := k
 		go func(j string) {
-			sc.listeners[j] <- true
-			wg.Done()
+			select {
+			case sc.listeners[j] <- true:
+			default:
+				return
+			}
 		}(k)
 	}
-	wg.Wait()
 }

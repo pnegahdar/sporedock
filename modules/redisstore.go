@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
@@ -347,7 +346,11 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 				select {
 				case <-time.Tick(time.Millisecond * 200):
 					dat := psc.Receive()
-					data <- dat
+						select {
+						case data <- dat:
+						default:
+							return
+						}
 				case <-exit:
 					return
 				}
@@ -361,7 +364,12 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 			case dat := <-data:
 				switch v := dat.(type) {
 				case redis.Message:
-					go func() { sm.Messages <- string(v.Data) }()
+					go func() { select {
+						case sm.Messages <- string(v.Data):
+						default:
+							return
+						}
+					}()
 				case redis.Subscription:
 					continue
 				case error:

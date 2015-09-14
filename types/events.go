@@ -61,7 +61,13 @@ func (em *EventManager) BroadcastToListeners(message EventMessage) {
 	em.Lock()
 	if listeners, ok := em.listeners[message.Event]; ok {
 		for _, listener := range listeners {
-			go func() { listener <- message }()
+			listener := listener
+			go func() { select {
+				case listener <- message:
+				default:
+					return
+				}
+			}()
 		}
 	}
 	em.Unlock()
@@ -82,6 +88,7 @@ func (em *EventManager) Listen(rc *RunContext, event Event, exit *utils.SignalCa
 		exitFromChild, _ := exit.Listen()
 		removeMe := func() {
 			em.Lock()
+			close(em.listeners[event][listenerID])
 			delete(em.listeners[event], listenerID)
 			em.Unlock()
 		}

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pnegahdar/sporedock/utils"
 	"strings"

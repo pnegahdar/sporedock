@@ -17,6 +17,7 @@ type RunContext struct {
 	RPCManager       *RPCManager
 	WebServerManager *WebServerManager
 	DockerClient     *docker.Client
+	CliManager       *CliManager
 	initOnce         sync.Once
 	sync.Mutex
 }
