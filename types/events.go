@@ -3,12 +3,27 @@ package types
 import (
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
+	"strings"
 )
 
 type Event string
 
 var EventAll Event = "*"
 var EventDockerAppStart Event = "docker:app:started"
+
+type StoreAction string
+var StoreActionCreate StoreAction = "create"
+var StoreActionDelete StoreAction = "delete"
+var StoreActionDeleteAll StoreAction = "deleteall"
+var StoreActionUpdate StoreAction = "update"
+
+func StoreEvent(storeAction StoreAction, meta TypeMeta) Event {
+	return Event(strings.Join([]string{"store", meta.TypeName, string(storeAction)}, ":"))
+}
+
+var EventStoreLeaderChange Event = "store:leader:change"
+var EventStoreSporeExit Event = "store:leader:change"
+
 
 type EventMessage struct {
 	Emitter   SporeID
@@ -23,7 +38,7 @@ func (ev *Event) emit(rc *RunContext, channels ...string) {
 	utils.HandleError(err)
 }
 
-func (ev *Event) EmitAll(rc *RunContext) {
+func (ev Event) EmitAll(rc *RunContext) {
 	spores, err := AllSpores(rc)
 	utils.HandleError(err)
 	sporeIDS := []string{}
@@ -33,7 +48,7 @@ func (ev *Event) EmitAll(rc *RunContext) {
 	ev.emit(rc, sporeIDS...)
 }
 
-func (ev *Event) EmitToSelf(rc *RunContext) {
+func (ev Event) EmitToSelf(rc *RunContext) {
 	ev.emit(rc, rc.MyMachineID)
 }
 
@@ -73,23 +88,27 @@ func (em *EventManager) BroadcastToListeners(message EventMessage) {
 	em.Unlock()
 }
 
-func (em *EventManager) Listen(rc *RunContext, event Event, exit *utils.SignalCast) chan EventMessage {
+func (em *EventManager) Listen(rc *RunContext, exit *utils.SignalCast, events ...Event) chan EventMessage {
 	em.initOnce.Do(func() { em.init(rc) })
 	message := make(chan EventMessage)
 	listenerID := utils.GenGuid()
 	em.Lock()
-	if _, ok := em.listeners[event]; !ok {
-		em.listeners[event] = map[string]chan EventMessage{}
+	for _, event := range(events){
+		if _, ok := em.listeners[event]; !ok {
+			em.listeners[event] = map[string]chan EventMessage{}
+		}
+		em.listeners[event][listenerID] = message
 	}
-	em.listeners[event][listenerID] = message
 	em.Unlock()
 	go func() {
 		exitFromParent, _ := em.ExitSignal.Listen()
 		exitFromChild, _ := exit.Listen()
 		removeMe := func() {
 			em.Lock()
-			close(em.listeners[event][listenerID])
-			delete(em.listeners[event], listenerID)
+			for _, event := range(events){
+				close(em.listeners[event][listenerID])
+				delete(em.listeners[event], listenerID)
+			}
 			em.Unlock()
 		}
 		for {

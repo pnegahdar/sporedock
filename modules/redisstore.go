@@ -65,8 +65,19 @@ func (rs RedisStore) runLeaderElection() {
 		leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 		conn := rs.GetConn()
 		defer conn.Close()
-		_, err := conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs)
+		leaderChange, err := redis.String(conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs))
+		if err != redis.ErrNil {
+			utils.HandleError(err)
+		}
+		if leaderChange == "OK" {
+			types.EventStoreLeaderChange.EmitAll(rs.runContext)
+		}
+		leader, err := rs.LeaderName()
 		utils.HandleError(err)
+		if leader == rs.runContext.MyMachineID {
+			_, err = conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
+			utils.HandleError(err)
+		}
 	}
 }
 
@@ -81,6 +92,7 @@ func (rs *RedisStore) runPruning() {
 			utils.LogWarn("Spore" + spore.ID + "looks dead, purning.")
 			err := rs.Delete(spore, spore.ID)
 			utils.HandleError(err)
+			types.EventStoreSporeExit.EmitAll(rs.runContext)
 		}
 	}
 
@@ -256,6 +268,13 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 		return wrapError(err)
 	}
 	if wasSet == 1 || update {
+		meta, err := types.NewMeta(v)
+		utils.HandleError(err)
+		action := types.StoreActionUpdate
+		if !update {
+			action = types.StoreActionCreate
+		}
+		types.StoreEvent(action, meta).EmitAll(rs.runContext)
 		logKey := rs.typeKey(rs.runContext, v, "__log")
 		_, err = conn.Do("LPUSH", logKey, data)
 		if err != nil {
@@ -288,14 +307,27 @@ func (rs RedisStore) Delete(v interface{}, id string) error {
 	if exists != 1 {
 		return types.ErrNoneFound
 	}
-	return wrapError(err)
+	if err != nil {
+		return wrapError(err)
+	}
+	meta, err := types.NewMeta(v)
+	utils.HandleError(err)
+	types.StoreEvent(types.StoreActionDelete, meta).EmitAll(rs.runContext)
+	return nil
+
 }
 
 func (rs RedisStore) DeleteAll(v interface{}) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	_, err := conn.Do("DEL", rs.typeKey(rs.runContext, v))
-	return wrapError(err)
+	if err != nil {
+		return wrapError(err)
+	}
+	meta, err := types.NewMeta(v)
+	utils.HandleError(err)
+	types.StoreEvent(types.StoreActionDeleteAll, meta).EmitAll(rs.runContext)
+	return nil
 }
 
 func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {

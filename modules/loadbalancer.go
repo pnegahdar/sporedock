@@ -174,7 +174,7 @@ func (lb *LoadBalancer) Stop() {
 
 func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 	exit, _ := lb.stopCast.Listen()
-	appRun := runContext.EventManager.Listen(runContext, types.EventDockerAppStart, &lb.stopCast)
+	appRun := runContext.EventManager.Listen(runContext, &lb.stopCast, types.EventDockerAppStart)
 	for {
 		select {
 		case <-time.After(time.Second * 10):
