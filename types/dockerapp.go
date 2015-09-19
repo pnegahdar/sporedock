@@ -13,17 +13,6 @@ type DockerApp interface {
 
 func nameSpacePrefix(runContext *RunContext) string { return runContext.NamespacePrefix("") }
 
-func hasApp(guid RunGuid, containerList []docker.APIContainers) bool {
-	for _, cont := range containerList {
-		for _, name := range cont.Names {
-			if guid != "" && strings.Contains(name, string(guid)) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func hasImage(imagelist []docker.APIImages, fullImageName string) bool {
 	for _, im := range imagelist {
 		for _, ims := range im.RepoTags {
@@ -33,6 +22,22 @@ func hasImage(imagelist []docker.APIImages, fullImageName string) bool {
 		}
 	}
 	return false
+}
+
+func fullDockerAppName(guid RunGuid, containerList []docker.APIContainers) string {
+	for _, cont := range containerList {
+		for _, name := range cont.Names {
+			if guid != "" && strings.Contains(name, string(guid)) {
+				return name
+			}
+		}
+	}
+	return ""
+}
+
+func hasApp(guid RunGuid, containerList []docker.APIContainers) bool {
+	containerName := fullDockerAppName(guid, containerList)
+	return containerName != ""
 }
 
 type parsedImage struct {
@@ -101,9 +106,9 @@ func CleanDeadApps(runContext *RunContext) {
 				}
 			}
 		}
-
 	}
 }
+
 func CleanupRemovedApps(runContext *RunContext, guidsToKeep []RunGuid) {
 	listContainerOptions := docker.ListContainersOptions{All: true}
 	containersAll, err := runContext.DockerClient.ListContainers(listContainerOptions)
@@ -124,6 +129,7 @@ func CleanupRemovedApps(runContext *RunContext, guidsToKeep []RunGuid) {
 		}
 	}
 }
+
 func RunApp(runContext *RunContext, guid RunGuid, app *App) {
 	containersAll, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: true})
 	utils.HandleError(err)

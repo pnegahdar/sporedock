@@ -1,10 +1,11 @@
 package modules
+
 import (
-	"sync"
-	"github.com/pnegahdar/sporedock/utils"
-	"github.com/pnegahdar/sporedock/types"
-	"time"
 	"fmt"
+	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
+	"sync"
+	"time"
 )
 
 // Tempalte for a new module.
@@ -43,7 +44,6 @@ func (tmpl *Template) Run(runContext *types.RunContext) {
 	}
 }
 
-
-func (tmpl *Template) ShouldRun(runContext *types.RunContext) bool{
+func (tmpl *Template) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }

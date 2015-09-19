@@ -16,12 +16,12 @@ func (em *EventModule) Init(rc *types.RunContext) {
 	rc.Lock()
 	defer rc.Unlock()
 	rc.EventManager = &types.EventManager{}
-}
-
-func (em *EventModule) Run(rc *types.RunContext) {
 	subManager, err := rc.Store.Subscribe(rc.MyMachineID)
 	utils.HandleError(err)
 	em.subManager = subManager
+}
+
+func (em *EventModule) Run(rc *types.RunContext) {
 	go func() {
 		exit, _ := em.stopCast.Listen()
 		for {

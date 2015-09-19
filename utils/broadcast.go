@@ -24,7 +24,8 @@ func (sc *SignalCast) Listen() (chan bool, string) {
 			case ret <- true:
 			default:
 				return
-			}}()
+			}
+		}()
 	}
 	name := GenGuid()
 	if _, ok := sc.listeners[name]; !ok {

@@ -1,8 +1,9 @@
 package modules
+
 import (
-	"sync"
-	"github.com/pnegahdar/sporedock/utils"
 	"github.com/pnegahdar/sporedock/types"
+	"github.com/pnegahdar/sporedock/utils"
+	"sync"
 )
 
 type Cli struct {
@@ -33,8 +34,6 @@ func (module *Cli) Run(runContext *types.RunContext) {
 	<-exit
 }
 
-
 func (module *Cli) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
-

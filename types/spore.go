@@ -76,9 +76,9 @@ func LeaderSpore(rc *RunContext) (*Spore, error) {
 	return spore, nil
 }
 
-func GetSpore(rc *RunContext, id string) (*Spore, error) {
+func GetSpore(rc *RunContext, id SporeID) (*Spore, error) {
 	spore := &Spore{}
-	err := rc.Store.Get(spore, id)
+	err := rc.Store.Get(spore, string(id))
 	if err != nil {
 		return nil, err
 	}

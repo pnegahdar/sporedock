@@ -31,7 +31,6 @@ func (rc RunContext) NamespacePrefix(joiner string, extra ...string) string {
 	return strings.Join(data, joiner)
 }
 
-
 func NewRunContext(machineID string, myIP net.IP, groupName string) *RunContext {
 	return &RunContext{MyMachineID: machineID, MyIP: myIP, MyGroup: groupName}
 }

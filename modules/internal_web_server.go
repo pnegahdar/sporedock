@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"gopkg.in/tylerb/graceful.v1"
@@ -9,12 +10,11 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/gorilla/mux"
 )
 
 type WebServer struct {
 	sync.Mutex
-	initOnce sync.Once
+	initOnce   sync.Once
 	stopCast   utils.SignalCast
 	stopCastMu sync.Mutex
 }
@@ -28,7 +28,7 @@ func (ws *WebServer) ProcName() string {
 }
 
 func (ws *WebServer) Init(runContext *types.RunContext) {
-	ws.initOnce.Do(func(){
+	ws.initOnce.Do(func() {
 		webServerRouter := mux.NewRouter().StrictSlash(true)
 		webserverManager := &types.WebServerManager{WebServerBind: ":5000", WebServerRouter: webServerRouter}
 		runContext.Lock()

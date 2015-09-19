@@ -148,6 +148,9 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
 	"time"
+	//	"github.com/mailgun/oxy/forward"
+	//	"github.com/mailgun/oxy/roundrobin"
+	//	"github.com/mailgun/oxy/stream"
 )
 
 var updateEndpointsEvery = time.Millisecond * 1000
@@ -173,12 +176,29 @@ func (lb *LoadBalancer) Stop() {
 }
 
 func (lb *LoadBalancer) Run(runContext *types.RunContext) {
+	//	fwd, _ := forward.New()
+	//	lb, _ := roundrobin.New(fwd)
+
+	// stream will read the request body and will replay the request again in case if forward returned status
+	// corresponding to nework error (e.g. Gateway Timeout)
+	//	stream, _ := stream.New(lb, stream.Retry(`IsNetworkError() && Attempts() < 2`))
+	//
+	//	lb.UpsertServer(url1)
+	//	lb.UpsertServer(url2)
+	//
+	//	// that's it! our reverse proxy is ready!
+	//	s := &http.Server{
+	//		Addr:           ":8080",
+	//		Handler:        stream,
+	//	}
+	//	s.ListenAndServe()
+
 	exit, _ := lb.stopCast.Listen()
 	appRun := runContext.EventManager.Listen(runContext, &lb.stopCast, types.EventDockerAppStart)
 	for {
 		select {
 		case <-time.After(time.Second * 10):
-			fmt.Println("YO")
+			types.GetApiRoute()
 		case <-appRun:
 			fmt.Println("AN APP HAS RAN")
 		case <-exit:

@@ -83,3 +83,21 @@ func AllApps(runContext *RunContext) ([]App, error) {
 	}
 	return apps, nil
 }
+
+func GetPortOn(runContext *RunContext, spore *Spore, app *App, runGuid RunGuid) int {
+	containersRunning, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: false})
+	utils.HandleError(err)
+	appName := fullDockerAppName(runGuid, containersRunning)
+	if appName == "" {
+		return 0
+	}
+	resp, err := runContext.DockerClient.InspectContainer(appName)
+	if err != nil {
+		utils.LogWarnF("Had issue finding container %v", appName)
+		return 0
+	}
+	for port, bindings := range resp.HostConfig.PortBindings {
+		fmt.Println(port, bindings)
+	}
+	return 0
+}

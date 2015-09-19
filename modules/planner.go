@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const PlanEveryMs = 5000
+var PlanDebounceInterval = time.Second * 5
 
 type Planner struct {
 	sync.Mutex
@@ -70,18 +70,26 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 
 func (pl *Planner) Run(runContext *types.RunContext) {
 	exit, _ := pl.stopCast.Listen()
+	appMeta, err := types.NewMeta(types.App{})
+	utils.HandleError(err)
+	anyAppEvent := types.StoreEvent(types.StorageActionAll, appMeta)
+	eventList := []types.Event{types.EventStoreSporeAdded, types.EventStoreSporeExit, anyAppEvent}
+	eventMessage := runContext.EventManager.ListenDebounced(runContext, &pl.stopCast, PlanDebounceInterval, eventList...)
+	plan := func() {
+		amLeader, err := types.AmLeader(runContext)
+		if err == types.ErrNoneFound {
+			return
+		}
+		utils.HandleError(err)
+		if amLeader {
+			pl.Plan(runContext)
+		}
+	}
 	for {
 		select {
-		case <-time.After(time.Millisecond * PlanEveryMs):
-			amLeader, err := types.AmLeader(runContext)
-			if err == types.ErrNoneFound {
-				continue
-			}
-			utils.HandleError(err)
-			if amLeader {
-				pl.Plan(runContext)
-			}
-		// Todo: Also bind the app create/delete event
+		case <-eventMessage:
+			utils.LogInfoF("Running %v", pl.ProcName())
+			plan()
 		case <-exit:
 			return
 		}

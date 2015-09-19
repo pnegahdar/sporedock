@@ -5,10 +5,7 @@ import (
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
-	"time"
 )
-
-var syncDockerEveryD = time.Millisecond * 1000
 
 type DockerRunner struct {
 	initOnce   sync.Once
@@ -38,9 +35,14 @@ func (d *DockerRunner) Stop() {
 
 func (d *DockerRunner) Run(runContext *types.RunContext) {
 	exit, _ := d.stopCast.Listen()
+	planMeta, err := types.NewMeta(&types.Plan{})
+	utils.HandleError(err)
+	listenForAppChange := types.StoreEvent(types.StorageActionAll, planMeta)
+	eventMessage := runContext.EventManager.ListenDebounced(runContext, &d.stopCast, PlanDebounceInterval, listenForAppChange)
 	for {
 		select {
-		case <-time.After(syncDockerEveryD):
+		case <-eventMessage:
+			utils.LogInfoF("Running %v", d.ProcName())
 			d.run()
 		case <-exit:
 			return

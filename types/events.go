@@ -2,28 +2,31 @@ package types
 
 import (
 	"github.com/pnegahdar/sporedock/utils"
-	"sync"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Event string
 
-var EventAll Event = "*"
+var EventAll Event = ":*"
 var EventDockerAppStart Event = "docker:app:started"
 
 type StoreAction string
+
 var StoreActionCreate StoreAction = "create"
 var StoreActionDelete StoreAction = "delete"
 var StoreActionDeleteAll StoreAction = "deleteall"
 var StoreActionUpdate StoreAction = "update"
+var StorageActionAll StoreAction = "*"
 
 func StoreEvent(storeAction StoreAction, meta TypeMeta) Event {
 	return Event(strings.Join([]string{"store", meta.TypeName, string(storeAction)}, ":"))
 }
 
 var EventStoreLeaderChange Event = "store:leader:change"
-var EventStoreSporeExit Event = "store:leader:change"
-
+var EventStoreSporeExit Event = "store:member:exit"
+var EventStoreSporeAdded Event = "store:member:added"
 
 type EventMessage struct {
 	Emitter   SporeID
@@ -53,7 +56,9 @@ func (ev Event) EmitToSelf(rc *RunContext) {
 }
 
 func (ev *Event) Matches(matching Event) bool {
-	if *ev == matching || *ev == EventAll {
+	event := *ev
+	matchPrefix := strings.TrimSuffix(string(matching), ":*")
+	if event == matching || strings.HasPrefix(string(event), matchPrefix) {
 		return true
 	}
 	return false
@@ -74,15 +79,18 @@ func (em *EventManager) init(rc *RunContext) {
 
 func (em *EventManager) BroadcastToListeners(message EventMessage) {
 	em.Lock()
-	if listeners, ok := em.listeners[message.Event]; ok {
-		for _, listener := range listeners {
-			listener := listener
-			go func() { select {
-				case listener <- message:
-				default:
-					return
-				}
-			}()
+	for event, listeners := range em.listeners {
+		if message.Event.Matches(event) {
+			for _, listener := range listeners {
+				listener := listener
+				go func() {
+					select {
+					case listener <- message:
+					default:
+						return
+					}
+				}()
+			}
 		}
 	}
 	em.Unlock()
@@ -93,7 +101,7 @@ func (em *EventManager) Listen(rc *RunContext, exit *utils.SignalCast, events ..
 	message := make(chan EventMessage)
 	listenerID := utils.GenGuid()
 	em.Lock()
-	for _, event := range(events){
+	for _, event := range events {
 		if _, ok := em.listeners[event]; !ok {
 			em.listeners[event] = map[string]chan EventMessage{}
 		}
@@ -105,9 +113,11 @@ func (em *EventManager) Listen(rc *RunContext, exit *utils.SignalCast, events ..
 		exitFromChild, _ := exit.Listen()
 		removeMe := func() {
 			em.Lock()
-			for _, event := range(events){
-				close(em.listeners[event][listenerID])
-				delete(em.listeners[event], listenerID)
+			for _, event := range events {
+				if channel, ok := em.listeners[event][listenerID]; ok {
+					close(channel)
+					delete(em.listeners[event], listenerID)
+				}
 			}
 			em.Unlock()
 		}
@@ -123,4 +133,30 @@ func (em *EventManager) Listen(rc *RunContext, exit *utils.SignalCast, events ..
 		}
 	}()
 	return message
+}
+
+func (em *EventManager) ListenDebounced(rc *RunContext, exit *utils.SignalCast, debounceInterval time.Duration, events ...Event) chan EventMessage {
+	messages := em.Listen(rc, exit, events...)
+	debouncedMessage := make(chan EventMessage)
+	go func() {
+		for {
+			debounceWaiter := time.After(debounceInterval)
+			lastMessage, ok := <-messages
+			if !ok {
+				close(debouncedMessage)
+				return
+			}
+		Loop:
+			for {
+				select {
+				case lastMessage = <-messages:
+					continue
+				case <-debounceWaiter:
+					debouncedMessage <- lastMessage
+					break Loop
+				}
+			}
+		}
+	}()
+	return debouncedMessage
 }

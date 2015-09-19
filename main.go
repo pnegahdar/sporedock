@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -26,7 +27,8 @@ func main() {
 		gr.Stop()
 		os.Exit(1)
 	}()
-	gr.Wait()
 	for {
+		<-time.After(time.Second * 1)
+		fmt.Println(runtime.NumGoroutine())
 	}
 }

@@ -111,8 +111,13 @@ func (rs *RedisStore) runCheckIn() {
 		rs.mu.Unlock()
 	}
 	spore := types.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
-	err = rs.Update(spore, spore.ID, types.SentinelEnd)
-	if err != types.ErrIDExists {
+	err = rs.Set(spore, spore.ID, types.SentinelEnd)
+	if err == types.ErrIDExists {
+		err = rs.Update(spore, spore.ID, types.SentinelEnd)
+		utils.HandleError(err)
+	} else if err == nil {
+		types.EventStoreSporeAdded.EmitAll(rs.runContext)
+	} else {
 		utils.HandleError(err)
 	}
 	_, err = conn.Do("SET", memberKey, rs.myMachineID, "PX", CheckinExpireMs)
@@ -136,7 +141,6 @@ func newRedisConnPool(server string) *redis.Pool {
 		},
 	}
 }
-
 
 func (rs *RedisStore) Run(context *types.RunContext) {
 	rs.mu.Lock()
@@ -351,6 +355,7 @@ func (rs RedisStore) LeaderName() (string, error) {
 }
 
 func (rs RedisStore) Publish(v interface{}, channels ...string) error {
+	// TODO(parham): if no listeners send later.
 	dump, err := utils.Marshall(v)
 	if err != nil {
 		return err
@@ -385,11 +390,11 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 				select {
 				case <-time.Tick(time.Millisecond * 200):
 					dat := psc.Receive()
-						select {
-						case data <- dat:
-						default:
-							return
-						}
+					select {
+					case data <- dat:
+					default:
+						return
+					}
 				case <-exit:
 					return
 				}
@@ -403,7 +408,8 @@ func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, erro
 			case dat := <-data:
 				switch v := dat.(type) {
 				case redis.Message:
-					go func() { select {
+					go func() {
+						select {
 						case sm.Messages <- string(v.Data):
 						default:
 							return
