@@ -13,19 +13,6 @@ import (
 	"sync"
 )
 
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc http.HandlerFunc
-}
-
-type Routes []Route
-
-var genCreate = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
-var genIndex = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
-var genDelete = map[string]types.Validable{types.EntityTypeApp: &types.App{}}
-
 func frontendDir() string {
 	_, filename, _, _ := runtime.Caller(1)
 	return path.Join(path.Dir(filename), "../frontend")
@@ -75,33 +62,33 @@ func (sa *SporeAPI) Stop() {
 }
 
 func (sa *SporeAPI) setupRoutes() {
-	routes := Routes{
+	routes := types.Routes{
 		// API
-		Route{
+		types.Route{
 			"Index",
 			"GET",
-			types.GetApiRoute(types.EntityTypeHome),
+			types.GetApiRoute(string(types.ApiEntityHome)),
 			sa.Home,
 		},
-		Route{
+		types.Route{
 			"GenericTypeIndex",
 			"GET",
 			types.GetGenApiRoute("{type}"),
 			sa.GenericTypeIndex,
 		},
-		Route{
+		types.Route{
 			"GenericTypeCreate",
 			"POST",
 			types.GetGenApiRoute("{type}"),
 			sa.GenericTypeCreate,
 		},
-		Route{
+		types.Route{
 			"GenericTypeGet",
 			"GET",
 			types.GetGenApiRoute("{type}", "{id}"),
 			sa.GenericTypeGet,
 		},
-		Route{
+		types.Route{
 			"GenericTypeDelete",
 			"DELETE",
 			types.GetGenApiRoute("{type}", "{id}"),
@@ -136,16 +123,6 @@ func bodyString(r *http.Request) string {
 	return string(body)
 }
 
-func datafromJsonRequest(body string) (string, error) {
-	request := types.JsonRequest{}
-	err := utils.Unmarshall(body, &request)
-	if err != nil {
-		return request.Data, types.ErrUnparsableRequest
-	}
-	return request.Data, nil
-
-}
-
 func jsonSuccessResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -162,29 +139,21 @@ func (sa SporeAPI) Home(w http.ResponseWriter, r *http.Request) {
 
 func (sa SporeAPI) GenericTypeIndex(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	genericTypeID := vars["type"]
-	var validable interface{}
-	switch genericTypeID {
-	case types.EntityTypeApp:
-		genericType := []types.App{}
-		err := sa.runContext.Store.GetAll(&genericType, 0, types.SentinelEnd)
-		if err != nil {
-			jsonErrorResponse(w, err, 400)
-			return
-		}
-		validable = genericType
-	default:
-		jsonErrorResponse(w, types.ErrNotFound, 404)
+	genericTypeID := types.ApiEntity(vars["type"])
+	validable, err, statusCode := types.GenIndexAll(sa.runContext, genericTypeID)
+	if err != nil {
+		jsonErrorResponse(w, err, statusCode)
 		return
 	}
 	jsonSuccessResponse(w, 200, validable)
+	return
 }
 
 func (sa SporeAPI) GenericTypeGet(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	genericTypeID := vars["type"]
+	genericTypeID := types.ApiEntity(vars["type"])
 	objectID := vars["id"]
-	indexable, ok := genIndex[genericTypeID]
+	indexable, ok := types.GenApiIndex[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
@@ -199,14 +168,13 @@ func (sa SporeAPI) GenericTypeGet(w http.ResponseWriter, r *http.Request) {
 
 func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	genericTypeID := vars["type"]
-	data, err := datafromJsonRequest(bodyString(r))
-	creatable, ok := genCreate[genericTypeID]
+	genericTypeID := types.ApiEntity(vars["type"])
+	creatable, ok := types.GenApiCreate[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return
 	}
-	err = utils.Unmarshall(data, &creatable)
+	err := utils.Unmarshall(bodyString(r), &creatable)
 	if err != nil {
 		jsonErrorResponse(w, err, 400)
 		return
@@ -226,9 +194,9 @@ func (sa SporeAPI) GenericTypeCreate(w http.ResponseWriter, r *http.Request) {
 
 func (sa SporeAPI) GenericTypeDelete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	genericTypeID := vars["type"]
+	genericTypeID := types.ApiEntity(vars["type"])
 	objectID := vars["id"]
-	creatable, ok := genDelete[genericTypeID]
+	creatable, ok := types.GenApiDelete[genericTypeID]
 	if !ok {
 		jsonErrorResponse(w, types.ErrNotFound, 404)
 		return

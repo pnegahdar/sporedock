@@ -136,22 +136,22 @@ func (cl Client) CreateGeneric(unpack interface{}, genType string) error {
 //WEBAPP
 func (cl Client) GetApps() ([]types.App, error) {
 	webapps := []types.App{}
-	err := cl.GetAllGeneric(&webapps, types.EntityTypeApp)
+	err := cl.GetAllGeneric(&webapps, types.ApiEntityApp)
 	return webapps, err
 }
 
 func (cl Client) GetApp(id string) (*types.App, error) {
 	webapps := &types.App{}
-	err := cl.GetGeneric(webapps, types.EntityTypeApp, id)
+	err := cl.GetGeneric(webapps, types.ApiEntityApp, id)
 	return webapps, err
 }
 
 func (cl Client) CreateApp(webapp *types.App) error {
-	err := cl.CreateGeneric(webapp, types.EntityTypeApp)
+	err := cl.CreateGeneric(webapp, types.ApiEntityApp)
 	return err
 }
 
 func (cl Client) DeleteApp(id string) error {
-	err := cl.DeleteGeneric(types.EntityTypeApp, id)
+	err := cl.DeleteGeneric(types.ApiEntityApp, id)
 	return err
 }

@@ -28,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}()
 	for {
-		<-time.After(time.Second * 1)
+		<-time.After(time.Second * 5)
 		fmt.Println(runtime.NumGoroutine())
 	}
 }

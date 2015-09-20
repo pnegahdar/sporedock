@@ -8,10 +8,7 @@ import (
 
 var ApiPrefix = "api/v1"
 var DashPrefix = "dashboard/v1"
-var EntityTypeHome = ""
-var EntityTypeApp = "app"
 
-var ErrUnparsableRequest = errors.New("The request json could not be parsed. Make sure its in the right format")
 var ErrNoneFound = errors.New("Results returned empty")
 var ErrNotFound = errors.New("Not found")
 var ErrIDEmpty = errors.New("ID cannot be empty.")
@@ -38,10 +35,6 @@ type Response struct {
 	Error      string      `json:"error"`
 	ErrorTB    string      `json:"errorTB"`
 	StatusCode int         `json:"code"`
-}
-
-type JsonRequest struct {
-	Data string `json:"data"`
 }
 
 func (rs *Response) IsError() bool {

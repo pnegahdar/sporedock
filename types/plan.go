@@ -23,7 +23,7 @@ type SporeGuid struct {
 
 type Plan struct {
 	sync.Mutex
-	SporeSchedule map[SporeID]map[RunGuid]*App
+	SporeSchedule map[SporeID]map[RunGuid]App
 	AppSchedule   map[AppID][]SporeGuid
 	SizeRem       map[SporeID]float64 `json:"-"`
 	SporeMap      map[SporeID]*Spore  `json:"-"`
@@ -48,7 +48,7 @@ func NewPlan(runContext *RunContext) (*Plan, error) {
 
 func (plan *Plan) init() {
 	plan.setupOnce.Do(func() {
-		plan.SporeSchedule = map[SporeID]map[RunGuid]*App{}
+		plan.SporeSchedule = map[SporeID]map[RunGuid]App{}
 		plan.AppSchedule = map[AppID][]SporeGuid{}
 		plan.SizeRem = map[SporeID]float64{}
 	})
@@ -57,14 +57,15 @@ func (plan *Plan) init() {
 func (plan *Plan) Add(spore *Spore, app *App, guid RunGuid) {
 	plan.init()
 	if _, ok := plan.SporeSchedule[SporeID(spore.ID)]; !ok {
-		plan.SporeSchedule[SporeID(spore.ID)] = map[RunGuid]*App{}
+		plan.SporeSchedule[SporeID(spore.ID)] = map[RunGuid]App{}
 	}
-	plan.SporeSchedule[SporeID(spore.ID)][guid] = app
+	plan.SporeSchedule[SporeID(spore.ID)][guid] = *app
 	plan.AppSchedule[AppID(app.ID)] = append(plan.AppSchedule[AppID(app.ID)], SporeGuid{Sporeid: SporeID(spore.ID), Appguid: guid})
 	if _, ok := plan.SizeRem[SporeID(spore.ID)]; !ok {
 		plan.SizeRem[SporeID(spore.ID)] = spore.Size()
 	}
 	plan.SizeRem[SporeID(spore.ID)] = plan.SizeRem[SporeID(spore.ID)] - app.Size()
+	app.CountRemaining--
 }
 
 func CurrentPlan(runContext *RunContext) (*Plan, error) {
@@ -110,7 +111,6 @@ func PersistExistingScheduler(app *App, runContext *RunContext, currentPlan *Pla
 		for i := 0; i < packCount; i++ {
 			if spore, ok := newPlan.SporeMap[sporeguids[i].Sporeid]; ok {
 				newPlan.Add(spore, app, sporeguids[i].Appguid)
-				app.CountRemaining--
 			}
 		}
 	}
@@ -123,14 +123,15 @@ func PersistExistingScheduler(app *App, runContext *RunContext, currentPlan *Pla
 func FirstFitsDecreasingScheduler(app *App, runContext *RunContext, currentPlan *Plan, newPlan *Plan) error {
 	var largestSpore *Spore
 	largestRemSize := 0.0
-	for i := 0; i < app.CountRemaining; i++ {
+	rem := app.CountRemaining
+	for i := 0; i < rem; i++ {
 		for _, spore := range newPlan.SporesDecr {
 			var size float64
 			if _, ok := newPlan.SizeRem[SporeID(spore.ID)]; !ok {
 				size = spore.Size()
 			}
 			if size > largestRemSize || largestSpore == nil {
-				largestSpore, largestRemSize = &spore, largestRemSize
+				largestSpore, largestRemSize = &spore, size
 			}
 
 			cpuFits := within(app.Cpus, spore.Cpus, FitRangeBound)

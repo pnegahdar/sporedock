@@ -63,10 +63,11 @@ func (d *DockerRunner) run() {
 	myJobs := plan.SporeSchedule[types.SporeID(d.runContext.MyMachineID)]
 	guidsToKeep := []types.RunGuid{}
 	for runGuid, app := range myJobs {
-		types.PullApp(d.runContext, app)
-		types.RunApp(d.runContext, runGuid, app)
+		types.PullApp(d.runContext, &app)
+		types.RunApp(d.runContext, runGuid, &app)
 		guidsToKeep = append(guidsToKeep, runGuid)
 	}
 	types.CleanupRemovedApps(d.runContext, guidsToKeep)
+	// Todo(parham): Delay n hours
 	types.CleanDeadApps(d.runContext)
 }

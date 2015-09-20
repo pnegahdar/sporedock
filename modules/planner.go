@@ -39,7 +39,6 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 	}
 	utils.HandleError(err)
 	allApps, err := types.AllApps(runContext)
-	sort.Sort(types.Apps(allApps))
 	if err == types.ErrNoneFound {
 		return
 	}
@@ -48,10 +47,10 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 		app.CountRemaining = app.Count
 		scheduled := false
 		// Todo: exclude repeat
-		for _, scheduler_fun := range types.Schedulers {
-			scheduled, err = scheduler_fun(&app, runContext, currentPlan, newPlan)
+		for _, schedulerFunc := range types.Schedulers {
+			scheduled, err = schedulerFunc(&app, runContext, currentPlan, newPlan)
 			if err != nil {
-				types.HandleSchedulerError(err, app.ID, fmt.Sprintf("%v", scheduler_fun))
+				types.HandleSchedulerError(err, app.ID, fmt.Sprintf("%v", schedulerFunc))
 			}
 			if scheduled {
 				break

@@ -11,7 +11,7 @@ type DockerApp interface {
 	GetID() string
 }
 
-func nameSpacePrefix(runContext *RunContext) string { return runContext.NamespacePrefix("") }
+func dockerNameSpacePrefix(runContext *RunContext, extra ...string) string { return runContext.NamespacePrefix("-", extra...) }
 
 func hasImage(imagelist []docker.APIImages, fullImageName string) bool {
 	for _, im := range imagelist {
@@ -81,7 +81,6 @@ func createContainer(runContext *RunContext, guid RunGuid, app DockerApp) string
 }
 
 func runApp(runContext *RunContext, containerID string, guid RunGuid, app DockerApp) {
-	utils.LogInfoF("Running app %v of %v", containerID, app.GetID())
 	err := runContext.DockerClient.StartContainer(containerID, app.DockerContainerOptions(runContext, guid).HostConfig)
 	utils.HandleError(err)
 	EventDockerAppStart.EmitToSelf(runContext)
@@ -94,7 +93,7 @@ func CleanDeadApps(runContext *RunContext) {
 	utils.HandleError(err)
 	for _, cont := range containersAll {
 		for _, name := range cont.Names {
-			if strings.Contains(name, nameSpacePrefix(runContext)) {
+			if strings.Contains(name, dockerNameSpacePrefix(runContext)) {
 				resp, err := runContext.DockerClient.InspectContainer(name)
 				utils.HandleError(err)
 				if !resp.State.Running {
@@ -116,7 +115,7 @@ func CleanupRemovedApps(runContext *RunContext, guidsToKeep []RunGuid) {
 	for _, cont := range containersAll {
 		delete := true
 		for _, name := range cont.Names {
-			if strings.Contains(name, nameSpacePrefix(runContext)) {
+			if strings.Contains(name, dockerNameSpacePrefix(runContext)) {
 				for _, guid := range guidsToKeep {
 					if strings.Contains(name, string(guid)) {
 						delete = false
@@ -135,12 +134,10 @@ func RunApp(runContext *RunContext, guid RunGuid, app *App) {
 	utils.HandleError(err)
 	containersRunning, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: false})
 	utils.HandleError(err)
-	appRunning := hasApp(guid, containersRunning)
-	appExists := hasApp(guid, containersAll)
-	if appRunning {
+	if hasApp(guid, containersRunning) {
 		return
 	}
-	if appExists {
+	if hasApp(guid, containersAll) {
 		return
 	}
 	containerID := createContainer(runContext, guid, app)

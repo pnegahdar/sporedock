@@ -48,7 +48,7 @@ type RedisStore struct {
 	stopCastMu       sync.Mutex
 }
 
-func (rs RedisStore) keyJoiner(runContext *types.RunContext, parts ...string) string {
+func (rs *RedisStore) keyJoiner(runContext *types.RunContext, parts ...string) string {
 	items := append(runContext.NamespacePrefixParts(), parts...)
 	return strings.Join(items, ":")
 }
@@ -60,7 +60,7 @@ func (rs RedisStore) typeKey(runContext *types.RunContext, v interface{}, parts 
 	return rs.keyJoiner(runContext, parts...)
 }
 
-func (rs RedisStore) runLeaderElection() {
+func (rs *RedisStore) runLeaderElection() {
 	if rs.myType != types.TypeSporeWatcher {
 		leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 		conn := rs.GetConn()
@@ -198,15 +198,15 @@ func (rs *RedisStore) Stop() {
 
 }
 
-func (rs RedisStore) ProcName() string {
+func (rs *RedisStore) ProcName() string {
 	return "RedisStore"
 }
 
-func (rs RedisStore) ShouldRun(context *types.RunContext) bool {
+func (rs *RedisStore) ShouldRun(context *types.RunContext) bool {
 	return true
 }
 
-func (rs RedisStore) Get(v interface{}, id string) error {
+func (rs *RedisStore) Get(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	resp, err := conn.Do("HGET", rs.typeKey(rs.runContext, v), id)
@@ -221,7 +221,7 @@ func (rs RedisStore) Get(v interface{}, id string) error {
 	return nil
 }
 
-func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
+func (rs *RedisStore) Exists(v interface{}, id string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
 	resp, err := conn.Do("HEXISTS", rs.typeKey(rs.runContext, v), id)
@@ -233,7 +233,7 @@ func (rs RedisStore) Exists(v interface{}, id string) (bool, error) {
 
 }
 
-func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
+func (rs *RedisStore) GetAll(v interface{}, start int, end int) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	resp, err := conn.Do("HVALS", rs.typeKey(rs.runContext, v))
@@ -252,7 +252,7 @@ func (rs RedisStore) GetAll(v interface{}, start int, end int) error {
 	return nil
 }
 
-func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
+func (rs *RedisStore) safeSet(v interface{}, id string, logTrim int, update bool) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	typeKey := rs.typeKey(rs.runContext, v)
@@ -296,15 +296,15 @@ func (rs RedisStore) safeSet(v interface{}, id string, logTrim int, update bool)
 	}
 }
 
-func (rs RedisStore) Set(v interface{}, id string, logTrim int) error {
+func (rs *RedisStore) Set(v interface{}, id string, logTrim int) error {
 	return rs.safeSet(v, id, logTrim, false)
 }
 
-func (rs RedisStore) Update(v interface{}, id string, logTrim int) error {
+func (rs *RedisStore) Update(v interface{}, id string, logTrim int) error {
 	return rs.safeSet(v, id, logTrim, true)
 }
 
-func (rs RedisStore) Delete(v interface{}, id string) error {
+func (rs *RedisStore) Delete(v interface{}, id string) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	exists, err := redis.Int(conn.Do("HDEL", rs.typeKey(rs.runContext, v), id))
@@ -321,7 +321,7 @@ func (rs RedisStore) Delete(v interface{}, id string) error {
 
 }
 
-func (rs RedisStore) DeleteAll(v interface{}) error {
+func (rs *RedisStore) DeleteAll(v interface{}) error {
 	conn := rs.GetConn()
 	defer conn.Close()
 	_, err := conn.Do("DEL", rs.typeKey(rs.runContext, v))
@@ -334,7 +334,7 @@ func (rs RedisStore) DeleteAll(v interface{}) error {
 	return nil
 }
 
-func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
+func (rs *RedisStore) IsHealthy(sporeName string) (bool, error) {
 	conn := rs.GetConn()
 	defer conn.Close()
 	memberKey := rs.keyJoiner(rs.runContext, "_redis", "_member", sporeName)
@@ -346,7 +346,7 @@ func (rs RedisStore) IsHealthy(sporeName string) (bool, error) {
 	return exists, nil
 }
 
-func (rs RedisStore) LeaderName() (string, error) {
+func (rs *RedisStore) LeaderName() (string, error) {
 	leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 	conn := rs.GetConn()
 	defer conn.Close()
@@ -354,7 +354,7 @@ func (rs RedisStore) LeaderName() (string, error) {
 	return name, wrapError(err)
 }
 
-func (rs RedisStore) Publish(v interface{}, channels ...string) error {
+func (rs *RedisStore) Publish(v interface{}, channels ...string) error {
 	// TODO(parham): if no listeners send later.
 	dump, err := utils.Marshall(v)
 	if err != nil {
@@ -367,11 +367,10 @@ func (rs RedisStore) Publish(v interface{}, channels ...string) error {
 		conn.Send("PUBLISH", fullChanName, dump)
 	}
 	conn.Flush()
-	_, err = conn.Receive()
 	return err
 }
 
-func (rs RedisStore) Subscribe(channel string) (*types.SubscriptionManager, error) {
+func (rs *RedisStore) Subscribe(channel string) (*types.SubscriptionManager, error) {
 	messages := make(chan string)
 	sm := &types.SubscriptionManager{ID: utils.GenGuid(), Messages: messages, Exit: utils.SignalCast{}}
 	conn := rs.GetConn()

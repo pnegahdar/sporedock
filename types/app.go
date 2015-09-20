@@ -33,15 +33,19 @@ func (a Apps) Less(i, j int) bool {
 	return GetSize(a[i].Cpus, a[i].Mem) < GetSize(a[j].Cpus, a[j].Mem)
 }
 
+func DockerPort(interalPort int) docker.Port {
+	return docker.Port(fmt.Sprintf("%v/tcp", interalPort))
+}
+
 func (wa App) DockerContainerOptions(runContext *RunContext, guid RunGuid) docker.CreateContainerOptions {
-	namePrefix := runContext.NamespacePrefix("", string(guid))
+	namePrefix := dockerNameSpacePrefix(runContext, string(wa.ID), string(guid))
 	policyName := fmt.Sprintf("%vRP", namePrefix)
 	restartPolicy := docker.RestartPolicy{
 		Name:              policyName,
 		MaximumRetryCount: 5,
 	}
 	anyPort := docker.PortBinding{HostPort: "0"}
-	elbPort := docker.Port(fmt.Sprintf("%v/tcp", wa.BalancedInternalTCPPort))
+	elbPort := DockerPort(wa.BalancedInternalTCPPort)
 	bindings := map[docker.Port][]docker.PortBinding{
 		elbPort: []docker.PortBinding{anyPort}}
 	hostConfig := &docker.HostConfig{
@@ -84,20 +88,21 @@ func AllApps(runContext *RunContext) ([]App, error) {
 	return apps, nil
 }
 
-func GetPortOn(runContext *RunContext, spore *Spore, app *App, runGuid RunGuid) int {
+func GetPortOn(runContext *RunContext, spore *Spore, app App, runGuid RunGuid) string {
 	containersRunning, err := runContext.DockerClient.ListContainers(docker.ListContainersOptions{All: false})
 	utils.HandleError(err)
 	appName := fullDockerAppName(runGuid, containersRunning)
 	if appName == "" {
-		return 0
+		return "0"
 	}
 	resp, err := runContext.DockerClient.InspectContainer(appName)
 	if err != nil {
 		utils.LogWarnF("Had issue finding container %v", appName)
-		return 0
+		return "0"
 	}
-	for port, bindings := range resp.HostConfig.PortBindings {
-		fmt.Println(port, bindings)
+	binding, ok := resp.NetworkSettings.Ports[DockerPort(app.BalancedInternalTCPPort)]
+	if !ok {
+		return "0"
 	}
-	return 0
+	return binding[0].HostPort
 }

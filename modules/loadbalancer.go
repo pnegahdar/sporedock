@@ -197,8 +197,8 @@ func (lb *LoadBalancer) Run(runContext *types.RunContext) {
 	appRun := runContext.EventManager.Listen(runContext, &lb.stopCast, types.EventDockerAppStart)
 	for {
 		select {
-		case <-time.After(time.Second * 10):
-			types.GetApiRoute()
+		case <-time.After(time.Second * 3):
+			fmt.Println("YO", types.GetMyHostMap(runContext))
 		case <-appRun:
 			fmt.Println("AN APP HAS RAN")
 		case <-exit:

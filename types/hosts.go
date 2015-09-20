@@ -1,12 +1,17 @@
 package types
 
-const HostMapLogLength = 200
+type Hostname string
 
-type HostMap struct {
-	Host     string
-	AppNames []string
+type AppHost struct {
+	ID   Hostname
+	Apps []AppID
 }
 
-func (hm HostMap) Validate() error {
+func (ah *AppHost) Validate(rc *RunContext) error {
+	// TODO(parham): Verify that app exists
 	return nil
+}
+
+func (ah *AppHost) GetID() string {
+	return string(ah.ID)
 }
