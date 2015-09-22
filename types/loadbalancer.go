@@ -3,22 +3,56 @@ package types
 import (
 	"fmt"
 	"github.com/pnegahdar/sporedock/utils"
+	"github.com/mailgun/oxy/forward"
+	"net/http"
+	"sync"
+	"github.com/mailgun/oxy/roundrobin"
+	"github.com/mailgun/oxy/stream"
+	"net/url"
 )
 
-type LoadBalancerManager struct {
+type streamRR struct {
+	stream *stream.Streamer
+	rr     *roundrobin.RoundRobin
 }
 
-func GetMyHostMap(runContext *RunContext) map[Hostname]map[string]bool {
-	mapping := map[Hostname]map[string]bool{}
+type HostHandlers map[Hostname]streamRR
+
+type LoadBalancer struct {
+	sync.RWMutex
+	Handlers HostHandlers
+}
+
+func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	host := req.Host
+	lb.RLock()
+	handler, ok := lb.Handlers[Hostname(host)]
+	lb.RUnlock()
+	if !ok {
+		http.NotFound(w, req)
+	} else {
+		handler.stream.ServeHTTP(w, req)
+	}
+}
+
+func (lb *LoadBalancer) Update(runContext *RunContext) {
+	lb.Lock()
+	defer lb.Unlock()
+	utils.LogInfoF("Running LB update")
+	lb.Handlers = GetMyHostMap(runContext)
+}
+
+func GetMyHostMap(runContext *RunContext) HostHandlers {
+	handlers := make(HostHandlers)
 	appHosts := []AppHost{}
 	err := runContext.Store.GetAll(&appHosts, 0, SentinelEnd)
 	if len(appHosts) == 0 {
-		return mapping
+		return handlers
 	}
 	utils.HandleError(err)
 	currentPlan, err := CurrentPlan(runContext)
 	if err == ErrNoneFound {
-		return mapping
+		return handlers
 	}
 	utils.HandleError(err)
 
@@ -38,15 +72,22 @@ func GetMyHostMap(runContext *RunContext) map[Hostname]map[string]bool {
 							if port == "0" {
 								utils.LogWarnF("Unable to loadbalance app %+v.", runapp)
 							}
-							host = fmt.Sprintf("http://127.0.0.1:%v", port)
+							host = fmt.Sprintf("http://192.168.59.103:%v", port)
 						} else {
 							// Todo(parham): check spores bound http port
 							host = fmt.Sprintf("http://%v:80")
 						}
-						if _, ok := mapping[apphost.ID]; !ok {
-							mapping[apphost.ID] = map[string]bool{}
+						if _, ok := handlers[apphost.ID]; !ok {
+							fwder, err := forward.New()
+							utils.HandleError(err)
+							rr, err := roundrobin.New(fwder)
+							utils.HandleError(err)
+							stream, _ := stream.New(rr, stream.Retry(`IsNetworkError() && Attempts() < 3`))
+							handlers[apphost.ID] = streamRR{stream: stream, rr: rr}
 						}
-						mapping[apphost.ID][host] = true
+						serverUrl, err := url.Parse(host)
+						utils.HandleError(err)
+						handlers[apphost.ID].rr.UpsertServer(serverUrl)
 					}
 				}
 			}
@@ -54,5 +95,5 @@ func GetMyHostMap(runContext *RunContext) map[Hostname]map[string]bool {
 		}
 
 	}
-	return mapping
+	return handlers
 }

@@ -39,8 +39,6 @@ func (ws *WebServer) Init(runContext *types.RunContext) {
 }
 
 func (ws *WebServer) Run(runContext *types.RunContext) {
-	ws.Lock()
-	defer ws.Unlock()
 	ws.stopCast = utils.SignalCast{}
 	exit, _ := ws.stopCast.Listen()
 	srv := &graceful.Server{
@@ -60,7 +58,5 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 }
 
 func (ws *WebServer) Stop() {
-	ws.stopCastMu.Lock()
-	defer ws.stopCastMu.Unlock()
 	ws.stopCast.Signal()
 }

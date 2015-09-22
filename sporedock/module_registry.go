@@ -128,9 +128,9 @@ func CreateAndRun(connectionString, groupName, machineID, machineIP string, webS
 	webserver := &modules.WebServer{}
 	cli := &modules.Cli{}
 	eventServer := &modules.EventModule{}
-	planner := &modules.Planner{}
-	dockerRunner := &modules.DockerRunner{}
-	loadBalancer := &modules.LoadBalancer{}
+	planner := &modules.PlannerModule{}
+	dockerRunner := &modules.DockerRunnerModule{}
+	loadBalancer := &modules.LoadBalancerModule{}
 	rpcserver := &modules.RPCServer{}
 
 	moduleRegistry.Start(false, cli, store, webserver, api, eventServer, planner, dockerRunner, loadBalancer, rpcserver)

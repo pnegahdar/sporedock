@@ -51,7 +51,7 @@ func parseDockerImage(image string) (parsedImage, error) {
 	if len(parts) == 1 {
 		parts = append(parts, "latest")
 	}
-	imgMeta := parsedImage{Tag: parts[1], Name: parts[1], Full: strings.Join(parts, ":")}
+	imgMeta := parsedImage{Tag: parts[1], Name: parts[0], Full: strings.Join(parts, ":")}
 	return imgMeta, nil
 }
 

@@ -148,65 +148,70 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"sync"
 	"time"
-	//	"github.com/mailgun/oxy/forward"
-	//	"github.com/mailgun/oxy/roundrobin"
-	//	"github.com/mailgun/oxy/stream"
+	"net/http"
+	"gopkg.in/tylerb/graceful.v1"
+	"strings"
 )
 
-var updateEndpointsEvery = time.Millisecond * 1000
+var loadBalancerDebounceInterval = time.Second * 5
 
-type LoadBalancer struct {
+type LoadBalancerModule struct {
 	initOnce   sync.Once
 	stopCast   utils.SignalCast
 	runContext *types.RunContext
 }
 
-func (lb *LoadBalancer) Init(runContext *types.RunContext) {
-	lb.initOnce.Do(func() {
-		lb.runContext = runContext
+func (lbm *LoadBalancerModule) Init(runContext *types.RunContext) {
+	lbm.initOnce.Do(func() {
+		lbm.runContext = runContext
 	})
 }
 
-func (lb *LoadBalancer) ProcName() string {
+func (lbm *LoadBalancerModule) ProcName() string {
 	return "LoadBalancer"
 }
 
-func (lb *LoadBalancer) Stop() {
-	lb.stopCast.Signal()
+func (lbm *LoadBalancerModule) Stop() {
+	lbm.stopCast.Signal()
 }
 
-func (lb *LoadBalancer) Run(runContext *types.RunContext) {
-	//	fwd, _ := forward.New()
-	//	lb, _ := roundrobin.New(fwd)
+func (lbm *LoadBalancerModule) Run(runContext *types.RunContext) {
+	loadBalancer := &types.LoadBalancer{}
+	lbBind := ":8008"
+	httpServer := &http.Server{
+		Addr:           lbBind,
+		Handler:        loadBalancer,
+	}
+	srv := &graceful.Server{
+		Timeout: 1 * time.Second,
+		Server: httpServer,
 
-	// stream will read the request body and will replay the request again in case if forward returned status
-	// corresponding to nework error (e.g. Gateway Timeout)
-	//	stream, _ := stream.New(lb, stream.Retry(`IsNetworkError() && Attempts() < 2`))
-	//
-	//	lb.UpsertServer(url1)
-	//	lb.UpsertServer(url2)
-	//
-	//	// that's it! our reverse proxy is ready!
-	//	s := &http.Server{
-	//		Addr:           ":8080",
-	//		Handler:        stream,
-	//	}
-	//	s.ListenAndServe()
-
-	exit, _ := lb.stopCast.Listen()
-	appRun := runContext.EventManager.Listen(runContext, &lb.stopCast, types.EventDockerAppStart)
+	}
+	go func(j *graceful.Server) {
+		utils.LogInfo(fmt.Sprintf("Loadbalancer started on %v", lbBind))
+		err := srv.ListenAndServe()
+		if !strings.Contains(err.Error(), "use of closed network connection") {
+			utils.HandleError(err)
+		}
+	}(srv)
+	appHostMeta, err := types.NewMeta(&types.AppHost{})
+	utils.HandleError(err)
+	appHostEvent := types.StoreEvent(types.StorageActionAll, appHostMeta)
+	eventFeed := runContext.EventManager.ListenDebounced(runContext, &lbm.stopCast, loadBalancerDebounceInterval, types.EventDockerAppStart, appHostEvent)
+	exit, _ := lbm.stopCast.Listen()
+	loadBalancer.Update(runContext)
 	for {
 		select {
-		case <-time.After(time.Second * 3):
-			fmt.Println("YO", types.GetMyHostMap(runContext))
-		case <-appRun:
-			fmt.Println("AN APP HAS RAN")
+		case <-eventFeed:
+			loadBalancer.Update(runContext)
 		case <-exit:
+			srv.Stop(srv.Timeout)
+			utils.LogInfo(fmt.Sprintf("LoadBalancer stopped on %v", lbBind))
 			return
 		}
 	}
 }
 
-func (lb *LoadBalancer) ShouldRun(runContext *types.RunContext) bool {
+func (lb *LoadBalancerModule) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }

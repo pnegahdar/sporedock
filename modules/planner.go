@@ -11,22 +11,23 @@ import (
 
 var PlanDebounceInterval = time.Second * 5
 
-type Planner struct {
+type PlannerModule struct {
 	sync.Mutex
 	stopCast   utils.SignalCast
 	stopCastMu sync.Mutex
+	runContext *types.RunContext
 }
 
-func (pl Planner) ShouldRun(runContext *types.RunContext) bool {
+func (plm PlannerModule) ShouldRun(runContext *types.RunContext) bool {
 	//TODO: Master only
 	return true
 }
 
-func (pl Planner) ProcName() string {
+func (plm PlannerModule) ProcName() string {
 	return "Planner"
 }
 
-func (pl *Planner) Plan(runContext *types.RunContext) {
+func (plm *PlannerModule) Plan(runContext *types.RunContext) {
 	currentPlan, err := types.CurrentPlan(runContext)
 	if err == types.ErrNoneFound {
 		currentPlan = nil
@@ -67,39 +68,43 @@ func (pl *Planner) Plan(runContext *types.RunContext) {
 	utils.HandleError(err)
 }
 
-func (pl *Planner) Run(runContext *types.RunContext) {
-	exit, _ := pl.stopCast.Listen()
+func (plm *PlannerModule) Run(runContext *types.RunContext) {
+	exit, _ := plm.stopCast.Listen()
 	appMeta, err := types.NewMeta(types.App{})
 	utils.HandleError(err)
 	anyAppEvent := types.StoreEvent(types.StorageActionAll, appMeta)
 	eventList := []types.Event{types.EventStoreSporeAdded, types.EventStoreSporeExit, anyAppEvent}
-	eventMessage := runContext.EventManager.ListenDebounced(runContext, &pl.stopCast, PlanDebounceInterval, eventList...)
-	plan := func() {
-		amLeader, err := types.AmLeader(runContext)
-		if err == types.ErrNoneFound {
-			return
-		}
-		utils.HandleError(err)
-		if amLeader {
-			pl.Plan(runContext)
-		}
-	}
+	eventMessage := runContext.EventManager.ListenDebounced(runContext, &plm.stopCast, PlanDebounceInterval, eventList...)
+	plm.run()
 	for {
 		select {
 		case <-eventMessage:
-			utils.LogInfoF("Running %v", pl.ProcName())
-			plan()
+			plm.run()
 		case <-exit:
 			return
 		}
 	}
 }
 
-func (pl *Planner) Init(runContext *types.RunContext) {
-	return
+func (plm *PlannerModule) run() {
+	utils.LogInfoF("Running %v", plm.ProcName())
+	amLeader, err := types.AmLeader(plm.runContext)
+	if err == types.ErrNoneFound {
+		return
+	}
+	utils.HandleError(err)
+	if amLeader {
+		plm.Plan(plm.runContext)
+	}
 }
 
-func (pl *Planner) Stop() {
+func (plm *PlannerModule) Init(runContext *types.RunContext) {
+	plm.Mutex.Lock()
+	defer plm.Mutex.Unlock()
+	plm.runContext = runContext
+}
+
+func (pl *PlannerModule) Stop() {
 	pl.stopCastMu.Lock()
 	defer pl.stopCastMu.Unlock()
 	pl.stopCast.Signal()

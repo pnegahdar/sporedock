@@ -5,6 +5,7 @@ import (
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/stretchr/testify/suite"
 	"testing"
+	"github.com/pnegahdar/sporedock/sporedock"
 )
 
 const testGroupName = "testGroup"
@@ -21,7 +22,7 @@ type TestTypeB struct {
 
 type GenericStoreTestSuite struct {
 	suite.Suite
-	registry *main.ModuleRegistry
+	registry *sporedock.ModuleRegistry
 }
 
 func (suite *GenericStoreTestSuite) cleanup() {
@@ -189,7 +190,7 @@ func TestAllStores(t *testing.T) {
 	storeTest := GenericStoreTestSuite{}
 	storesToTest := []string{"redis://localhost:6379"}
 	for _, store := range storesToTest {
-		run := CreateAndRun(store, "testGroup", "myMachine", "127.0.0.1", ":5001")
+		run := sporedock.CreateAndRun(store, "testGroup", "myMachine", "127.0.0.1", ":5001")
 		storeTest.registry = run
 		suite.Run(t, &storeTest)
 		run.Stop()

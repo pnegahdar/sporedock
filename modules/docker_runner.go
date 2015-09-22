@@ -7,54 +7,55 @@ import (
 	"sync"
 )
 
-type DockerRunner struct {
+type DockerRunnerModule struct {
 	initOnce   sync.Once
 	client     *docker.Client
 	stopCast   utils.SignalCast
 	runContext *types.RunContext
 }
 
-func (d *DockerRunner) Init(runContext *types.RunContext) {
-	d.initOnce.Do(func() {
+func (drm *DockerRunnerModule) Init(runContext *types.RunContext) {
+	drm.initOnce.Do(func() {
 		client, err := docker.NewClientFromEnv()
 		utils.HandleError(err)
 		runContext.Lock()
 		runContext.DockerClient = client
 		runContext.Unlock()
-		d.runContext = runContext
+		drm.runContext = runContext
 	})
 }
 
-func (d DockerRunner) ProcName() string {
+func (drm DockerRunnerModule) ProcName() string {
 	return "DockerRunner"
 }
 
-func (d *DockerRunner) Stop() {
-	d.stopCast.Signal()
+func (drm *DockerRunnerModule) Stop() {
+	drm.stopCast.Signal()
 }
 
-func (d *DockerRunner) Run(runContext *types.RunContext) {
-	exit, _ := d.stopCast.Listen()
+func (drm *DockerRunnerModule) Run(runContext *types.RunContext) {
+	exit, _ := drm.stopCast.Listen()
 	planMeta, err := types.NewMeta(&types.Plan{})
 	utils.HandleError(err)
 	listenForAppChange := types.StoreEvent(types.StorageActionAll, planMeta)
-	eventMessage := runContext.EventManager.ListenDebounced(runContext, &d.stopCast, PlanDebounceInterval, listenForAppChange)
+	eventMessage := runContext.EventManager.ListenDebounced(runContext, &drm.stopCast, PlanDebounceInterval, listenForAppChange)
+	drm.run()
 	for {
 		select {
 		case <-eventMessage:
-			utils.LogInfoF("Running %v", d.ProcName())
-			d.run()
+			drm.run()
 		case <-exit:
 			return
 		}
 	}
 }
 
-func (d *DockerRunner) ShouldRun(runContext *types.RunContext) bool {
+func (drm *DockerRunnerModule) ShouldRun(runContext *types.RunContext) bool {
 	return true
 }
 
-func (d *DockerRunner) run() {
+func (d *DockerRunnerModule) run() {
+	utils.LogInfoF("Running %v", d.ProcName())
 	plan, err := types.CurrentPlan(d.runContext)
 	if err == types.ErrNoneFound {
 		return
