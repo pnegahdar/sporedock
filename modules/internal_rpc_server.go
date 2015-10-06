@@ -17,7 +17,7 @@ type RPCServer struct {
 func (rpc *RPCServer) Init(runContext *types.RunContext) {
 	rpc.initOnce.Do(func() {
 		// Requires one fake func to run/init
-		rpcManager := (&types.RPCManager{RPCServerBind: ":5001"}).Init()
+		rpcManager := (&types.RPCManager{RPCServerBind: runContext.Config.RPCServerBind}).Init()
 		rpcManager.RPCAddFunc("_interfal_fake", func() {})
 		runContext.Lock()
 		runContext.RPCManager = rpcManager

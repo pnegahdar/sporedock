@@ -16,7 +16,7 @@ func (em *EventModule) Init(rc *types.RunContext) {
 	rc.Lock()
 	defer rc.Unlock()
 	rc.EventManager = &types.EventManager{}
-	subManager, err := rc.Store.Subscribe(rc.MyMachineID)
+	subManager, err := rc.Store.Subscribe(rc.Config.MyMachineID)
 	utils.HandleError(err)
 	em.subManager = subManager
 }

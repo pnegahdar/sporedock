@@ -35,8 +35,8 @@ type EventMessage struct {
 }
 
 func (ev *Event) emit(rc *RunContext, channels ...string) {
-	myID := rc.MyMachineID
-	message := EventMessage{Emitter: SporeID(myID), EmitterIP: rc.MyIP.String(), Event: *ev}
+	myID := rc.Config.MyMachineID
+	message := EventMessage{Emitter: SporeID(myID), EmitterIP: rc.Config.MyIP.String(), Event: *ev}
 	err := rc.Store.Publish(message, channels...)
 	utils.HandleError(err)
 }
@@ -52,7 +52,7 @@ func (ev Event) EmitAll(rc *RunContext) {
 }
 
 func (ev Event) EmitToSelf(rc *RunContext) {
-	ev.emit(rc, rc.MyMachineID)
+	ev.emit(rc, rc.Config.MyMachineID)
 }
 
 func (ev *Event) Matches(matching Event) bool {

@@ -30,10 +30,10 @@ func (ws *WebServer) ProcName() string {
 func (ws *WebServer) Init(runContext *types.RunContext) {
 	ws.initOnce.Do(func() {
 		webServerRouter := mux.NewRouter().StrictSlash(true)
-		webserverManager := &types.WebServerManager{WebServerBind: ":5000", WebServerRouter: webServerRouter}
+		webserverManager := &types.WebServerManager{WebServerRouter: webServerRouter}
 		runContext.Lock()
-		runContext.WebServerManager = webserverManager
 		defer runContext.Unlock()
+		runContext.WebServerManager = webserverManager
 	})
 
 }
@@ -43,10 +43,10 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 	exit, _ := ws.stopCast.Listen()
 	srv := &graceful.Server{
 		Timeout: 1 * time.Second,
-		Server:  &http.Server{Addr: runContext.WebServerManager.WebServerBind, Handler: runContext.WebServerManager.WebServerRouter},
+		Server:  &http.Server{Addr: runContext.Config.WebServerBind, Handler: runContext.WebServerManager.WebServerRouter},
 	}
 	go func(j *graceful.Server) {
-		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.WebServerManager.WebServerBind))
+		utils.LogInfo(fmt.Sprintf("Webserver started on %v", runContext.Config.WebServerBind))
 		err := srv.ListenAndServe()
 		if !strings.Contains(err.Error(), "use of closed network connection") {
 			utils.HandleError(err)
@@ -54,7 +54,7 @@ func (ws *WebServer) Run(runContext *types.RunContext) {
 	}(srv)
 	<-exit
 	srv.Stop(srv.Timeout)
-	utils.LogInfo(fmt.Sprintf("Webserver stopped on %v", runContext.WebServerManager.WebServerBind))
+	utils.LogInfo(fmt.Sprintf("Webserver stopped on %v", runContext.Config.WebServerBind))
 }
 
 func (ws *WebServer) Stop() {

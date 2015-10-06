@@ -4,7 +4,6 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
-	"net"
 	"strings"
 	"sync"
 	"time"
@@ -14,15 +13,6 @@ const CheckinEveryMs = 1000 //Delta between these two indicate how long it takes
 const CheckinExpireMs = 5000
 const LeadershipExpireMs = 3000
 const PubSubChannelNamePrefix = "pubsub"
-
-func CreateStore(connectionString, group string) types.SporeStore {
-	if strings.HasPrefix(connectionString, "redis://") {
-		return NewRedisStore(connectionString)
-	} else {
-		utils.HandleError(types.ErrConnectionString)
-		return nil
-	}
-}
 
 var knownErrors = map[error]error{redis.ErrNil: types.ErrNoneFound}
 
@@ -35,17 +25,12 @@ func wrapError(err error) error {
 }
 
 type RedisStore struct {
-	mu               sync.Mutex
-	initOnce         sync.Once
-	connectionString string
-	connPool         *redis.Pool
-	group            string
-	myIP             net.IP
-	myType           types.SporeType
-	myMachineID      string
-	runContext       *types.RunContext
-	stopCast         utils.SignalCast
-	stopCastMu       sync.Mutex
+	mu         sync.Mutex
+	initOnce   sync.Once
+	connPool   *redis.Pool
+	runContext *types.RunContext
+	stopCast   utils.SignalCast
+	stopCastMu sync.Mutex
 }
 
 func (rs *RedisStore) keyJoiner(runContext *types.RunContext, parts ...string) string {
@@ -61,11 +46,12 @@ func (rs RedisStore) typeKey(runContext *types.RunContext, v interface{}, parts 
 }
 
 func (rs *RedisStore) runLeaderElection() {
-	if rs.myType != types.TypeSporeWatcher {
+	config := rs.runContext.Config
+	if config.MyType != types.TypeSporeWatcher {
 		leaderKey := rs.keyJoiner(rs.runContext, "_redis", "_leader")
 		conn := rs.GetConn()
 		defer conn.Close()
-		leaderChange, err := redis.String(conn.Do("SET", leaderKey, rs.myMachineID, "NX", "PX", LeadershipExpireMs))
+		leaderChange, err := redis.String(conn.Do("SET", leaderKey, config.MyMachineID, "NX", "PX", LeadershipExpireMs))
 		if err != redis.ErrNil {
 			utils.HandleError(err)
 		}
@@ -74,7 +60,7 @@ func (rs *RedisStore) runLeaderElection() {
 		}
 		leader, err := rs.LeaderName()
 		utils.HandleError(err)
-		if leader == rs.runContext.MyMachineID {
+		if leader == config.MyMachineID {
 			_, err = conn.Do("PEXPIRE", leaderKey, LeadershipExpireMs)
 			utils.HandleError(err)
 		}
@@ -99,18 +85,20 @@ func (rs *RedisStore) runPruning() {
 }
 
 func (rs *RedisStore) runCheckIn() {
+	config := rs.runContext.Config
 	conn := rs.GetConn()
 	defer conn.Close()
 	//Todo protect for duped names
-	memberKey := rs.keyJoiner(rs.runContext, "_redis", "_member", rs.myMachineID)
+	memberKey := rs.keyJoiner(rs.runContext, "_redis", "_member", config.MyMachineID)
 	leader, err := rs.LeaderName()
 	utils.HandleError(err)
-	if leader == rs.myMachineID {
-		rs.mu.Lock()
-		rs.myType = types.TypeSporeLeader
-		rs.mu.Unlock()
+	if leader == config.MyMachineID {
+		rs.runContext.Lock()
+		config.MyType = types.TypeSporeLeader
+		rs.runContext.Config.MyType = types.TypeSporeLeader
+		rs.runContext.Unlock()
 	}
-	spore := types.Spore{ID: rs.myMachineID, MemberIP: rs.myIP.String(), MemberType: rs.myType}
+	spore := types.Spore{ID: config.MyMachineID, MemberIP: config.MyIP.String(), MemberType: config.MyType}
 	err = rs.Set(spore, spore.ID, types.SentinelEnd)
 	if err == types.ErrIDExists {
 		err = rs.Update(spore, spore.ID, types.SentinelEnd)
@@ -120,7 +108,7 @@ func (rs *RedisStore) runCheckIn() {
 	} else {
 		utils.HandleError(err)
 	}
-	_, err = conn.Do("SET", memberKey, rs.myMachineID, "PX", CheckinExpireMs)
+	_, err = conn.Do("SET", memberKey, config.MyMachineID, "PX", CheckinExpireMs)
 	utils.HandleError(err)
 }
 
@@ -161,21 +149,14 @@ func (rs *RedisStore) Run(context *types.RunContext) {
 	}
 }
 
-func (rs *RedisStore) setup() {
-	if rs.connectionString == "" {
-		utils.HandleError(types.ErrConnectionStringNotSet)
-	}
-	rs.group = rs.runContext.MyGroup
-	rs.myIP = rs.runContext.MyIP
-	rs.myType = rs.runContext.MyType
-	rs.myMachineID = rs.runContext.MyMachineID
-	rs.connPool = newRedisConnPool(rs.connectionString)
-}
-
 func (rs *RedisStore) Init(runContext *types.RunContext) {
 	rs.initOnce.Do(func() {
 		rs.runContext = runContext
-		rs.setup()
+		if runContext.Config.ConnectionString == "" {
+			utils.HandleError(types.ErrConnectionStringNotSet)
+		}
+		connectionString := strings.TrimPrefix(runContext.Config.ConnectionString, "redis://")
+		rs.connPool = newRedisConnPool(connectionString)
 		runContext.Lock()
 		runContext.Store = rs
 		runContext.Unlock()
@@ -423,9 +404,4 @@ func (rs *RedisStore) Subscribe(channel string) (*types.SubscriptionManager, err
 		}
 	}()
 	return sm, nil
-}
-
-func NewRedisStore(redisConnecitonURI string) types.SporeStore {
-	redisConnecitonURI = strings.TrimPrefix(redisConnecitonURI, "redis://")
-	return &RedisStore{connectionString: redisConnecitonURI}
 }

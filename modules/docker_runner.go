@@ -61,7 +61,7 @@ func (d *DockerRunnerModule) run() {
 		return
 	}
 	utils.HandleError(err)
-	myJobs := plan.SporeSchedule[types.SporeID(d.runContext.MyMachineID)]
+	myJobs := plan.SporeSchedule[types.SporeID(d.runContext.Config.MyMachineID)]
 	guidsToKeep := []types.RunGuid{}
 	for runGuid, app := range myJobs {
 		types.PullApp(d.runContext, &app)

@@ -36,3 +36,12 @@ func LogWarnF(message string, a ...interface{}) {
 func LogDebug(message string) {
 	log.Debug(message)
 }
+
+func LogError(message string) {
+	log.Error(message)
+	os.Exit(1)
+}
+
+func LogErrorF(message string, a ...interface{}) {
+	LogError(fmt.Sprintf(message, a...))
+}

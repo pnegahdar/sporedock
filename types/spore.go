@@ -90,6 +90,6 @@ func AmLeader(rc *RunContext) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return rc.MyMachineID == leaderName, nil
+	return rc.Config.MyMachineID == leaderName, nil
 
 }

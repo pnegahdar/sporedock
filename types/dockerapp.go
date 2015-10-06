@@ -11,7 +11,9 @@ type DockerApp interface {
 	GetID() string
 }
 
-func dockerNameSpacePrefix(runContext *RunContext, extra ...string) string { return runContext.NamespacePrefix("-", extra...) }
+func dockerNameSpacePrefix(runContext *RunContext, extra ...string) string {
+	return runContext.NamespacePrefix("-", extra...)
+}
 
 func hasImage(imagelist []docker.APIImages, fullImageName string) bool {
 	for _, im := range imagelist {

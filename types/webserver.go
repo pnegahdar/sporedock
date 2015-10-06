@@ -6,7 +6,6 @@ import (
 )
 
 type WebServerManager struct {
-	WebServerBind   string
 	WebServerRouter *mux.Router
 	sync.Mutex
 }

@@ -2,13 +2,13 @@ package types
 
 import (
 	"fmt"
-	"github.com/pnegahdar/sporedock/utils"
 	"github.com/mailgun/oxy/forward"
-	"net/http"
-	"sync"
 	"github.com/mailgun/oxy/roundrobin"
 	"github.com/mailgun/oxy/stream"
+	"github.com/pnegahdar/sporedock/utils"
+	"net/http"
 	"net/url"
+	"sync"
 )
 
 type streamRR struct {
@@ -67,7 +67,7 @@ func GetMyHostMap(runContext *RunContext) HostHandlers {
 						spore, err := GetSpore(runContext, sporeguid.Sporeid)
 						utils.HandleError(err)
 						var host string
-						if spore.ID == runContext.MyMachineID {
+						if spore.ID == runContext.Config.MyMachineID {
 							port := GetPortOn(runContext, spore, runapp, runguid)
 							if port == "0" {
 								utils.LogWarnF("Unable to loadbalance app %+v.", runapp)

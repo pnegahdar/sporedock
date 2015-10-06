@@ -15,6 +15,10 @@ type Module interface {
 	Stop()
 }
 
+type CliModule interface {
+	InitCli(runContext *RunContext)
+}
+
 type Identifiable interface {
 	GetID() string
 }

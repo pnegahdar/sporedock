@@ -1,11 +1,11 @@
 package modules
 
 import (
+	"github.com/pnegahdar/sporedock/sporedock"
 	"github.com/pnegahdar/sporedock/types"
 	"github.com/pnegahdar/sporedock/utils"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"github.com/pnegahdar/sporedock/sporedock"
 )
 
 const testGroupName = "testGroup"
