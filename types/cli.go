@@ -77,7 +77,7 @@ var FlagLoadBalancerBind = cli.StringFlag{
 
 var FlagDockerInterfaceIP = cli.StringFlag{
 	Name:   "docker-ip",
-        Value:  "192.168.99.100",
+	Value:  "192.168.99.100",
 	Usage:  "The IP on which docker serves containers.",
 	EnvVar: "SPOREDOCK_DOCKER_IP"}
 

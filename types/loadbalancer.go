@@ -72,8 +72,8 @@ func GetMyHostMap(runContext *RunContext) HostHandlers {
 							if port == "0" {
 								utils.LogWarnF("Unable to loadbalance app %+v.", runapp)
 							}
-                                                        host = fmt.Sprintf("http://%v:%v", runContext.Config.DockerInterfaceIP, port)
-                                                        fmt.Println(host);
+							host = fmt.Sprintf("http://%v:%v", runContext.Config.DockerInterfaceIP, port)
+							fmt.Println(host)
 						} else {
 							// Todo(parham): check spores bound http port
 							host = fmt.Sprintf("http://%v:80")

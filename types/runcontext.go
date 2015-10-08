@@ -38,14 +38,14 @@ type Config struct {
 
 func NewConfig(connectionString, myGroup, machineID string, myType SporeType, machineIP net.IP, webServerBind string, rpcServerBind string, loadBalancerBind string, dockerInterfaceIP string) *Config {
 	return &Config{
-		ConnectionString: connectionString,
-		MyType:           myType,
-		MyGroup:          myGroup,
-		MyMachineID:      machineID,
-		MyIP:             machineIP,
-		WebServerBind:    webServerBind,
-		RPCServerBind:    rpcServerBind,
-		LoadBalancerBind: loadBalancerBind,
+		ConnectionString:  connectionString,
+		MyType:            myType,
+		MyGroup:           myGroup,
+		MyMachineID:       machineID,
+		MyIP:              machineIP,
+		WebServerBind:     webServerBind,
+		RPCServerBind:     rpcServerBind,
+		LoadBalancerBind:  loadBalancerBind,
 		DockerInterfaceIP: dockerInterfaceIP}
 }
 
