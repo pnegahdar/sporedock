@@ -25,17 +25,18 @@ func NewRunContext() *RunContext {
 }
 
 type Config struct {
-	ConnectionString string
-	MyGroup          string
-	MyIP             net.IP
-	MyType           SporeType
-	MyMachineID      string
-	WebServerBind    string
-	RPCServerBind    string
-	LoadBalancerBind string
+	ConnectionString  string
+	MyGroup           string
+	MyIP              net.IP
+	MyType            SporeType
+	MyMachineID       string
+	WebServerBind     string
+	RPCServerBind     string
+	LoadBalancerBind  string
+	DockerInterfaceIP string
 }
 
-func NewConfig(connectionString, myGroup, machineID string, myType SporeType, machineIP net.IP, webServerBind string, rpcServerBind string, loadBalacnerBind string) *Config {
+func NewConfig(connectionString, myGroup, machineID string, myType SporeType, machineIP net.IP, webServerBind string, rpcServerBind string, loadBalancerBind string, dockerInterfaceIP string) *Config {
 	return &Config{
 		ConnectionString: connectionString,
 		MyType:           myType,
@@ -44,7 +45,8 @@ func NewConfig(connectionString, myGroup, machineID string, myType SporeType, ma
 		MyIP:             machineIP,
 		WebServerBind:    webServerBind,
 		RPCServerBind:    rpcServerBind,
-		LoadBalancerBind: loadBalacnerBind}
+		LoadBalancerBind: loadBalancerBind,
+		DockerInterfaceIP: dockerInterfaceIP}
 }
 
 func NewConfigFromCli(cliContext *cli.Context) *Config {
@@ -56,7 +58,8 @@ func NewConfigFromCli(cliContext *cli.Context) *Config {
 	webserverBind := RequiredStringArg(cliContext, FlagWebServerBind.Name)
 	rpcServerBind := RequiredStringArg(cliContext, FlagRPCServerBind.Name)
 	loadBalancerBinder := RequiredStringArg(cliContext, FlagLoadBalancerBind.Name)
-	return NewConfig(connectionString, myGroup, myName, myType, myIP, webserverBind, rpcServerBind, loadBalancerBinder)
+	dockerInterfaceIP := RequiredStringArg(cliContext, FlagDockerInterfaceIP.Name)
+	return NewConfig(connectionString, myGroup, myName, myType, myIP, webserverBind, rpcServerBind, loadBalancerBinder, dockerInterfaceIP)
 }
 
 func (rc RunContext) NamespacePrefixParts() []string {

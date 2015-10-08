@@ -75,4 +75,10 @@ var FlagLoadBalancerBind = cli.StringFlag{
 	Usage:  "Addr to bind loadbalancer on",
 	EnvVar: "SPOREDOCK_LOADBALANCER_BIND"}
 
-var RunCommandFlags = []cli.Flag{FlagStoreConnectionString, FlagGroupName, FlagMyIP, FlagMyName, FlagWebServerBind, FlagRPCServerBind, FlagLoadBalancerBind, FlagMyType}
+var FlagDockerInterfaceIP = cli.StringFlag{
+	Name:   "docker-ip",
+        Value:  "192.168.99.100",
+	Usage:  "The IP on which docker serves containers.",
+	EnvVar: "SPOREDOCK_DOCKER_IP"}
+
+var RunCommandFlags = []cli.Flag{FlagStoreConnectionString, FlagGroupName, FlagMyIP, FlagMyName, FlagWebServerBind, FlagRPCServerBind, FlagLoadBalancerBind, FlagMyType, FlagDockerInterfaceIP}
