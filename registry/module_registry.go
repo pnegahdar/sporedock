@@ -1,4 +1,4 @@
-package sporedock
+package registry
 
 import (
 	"fmt"

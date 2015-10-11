@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/op/go-logging"
-	"github.com/pnegahdar/sporedock/sporedock"
+	"github.com/pnegahdar/sporedock/registry"
 	"github.com/pnegahdar/sporedock/utils"
 	"os"
 	"os/signal"
@@ -31,6 +31,6 @@ func main() {
 			<-time.After(time.Second * 60)
 		}
 	}()
-	moduleRegister := sporedock.Create()
+	moduleRegister := registry.Create()
 	moduleRegister.RunCli()
 }

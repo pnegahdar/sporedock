@@ -1,0 +1,21 @@
+{
+  "ArtifactsDest": "build",
+  "OutPath": "{{.Dest }}{{.PS}}{{.Os}}_{{.Arch}}{{.PS}}{{.ExeName}}{{.Ext}}",
+  "Tasks": [
+    "go-clean",
+    "clean-destination",
+    "default"
+  ],
+  "TasksExclude": [
+    "go-test",
+    "go-vet",
+    "deb",
+    "copy-resources",
+    "deb-dev"
+  ],
+  "BuildConstraints": "darwin linux",
+  "ResourcesInclude": "NONE",
+  "ResourcesExclude": "*.go",
+  "PackageVersion": "latest",
+  "ConfigVersion": "0.9"
+}
